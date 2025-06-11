@@ -18,10 +18,7 @@
                         class="relative w-24 h-24 mx-auto mb-2 rounded-full overflow-hidden border-2 border-stone-300"
                     >
                         <img
-                            :src="
-                                userProfile.avatar ||
-                                'https://via.placeholder.com/96'
-                            "
+                            :src="userProfile.avatar"
                             alt="用户头像"
                             class="w-full h-full object-cover"
                         />
@@ -137,16 +134,18 @@
 
 <script>
 import axios from "axios"; // 引入 axios
+import defaultUserAvatar from "@/assets/images/default_user.png"; // 导入默认头像图片
 
 export default {
     name: "Profile",
     data() {
+        const avatarPath = localStorage.getItem("avatar");
         return {
             userProfile: {
                 username: localStorage.getItem("username") || "", // 从 localStorage 获取用户名
-                avatar: localStorage.getItem("avatar")
-                    ? `http://localhost:5000${localStorage.getItem("avatar")}`
-                    : "",
+                avatar: avatarPath
+                    ? `http://localhost:5000${avatarPath}`
+                    : defaultUserAvatar,
                 email: "",
                 address: "",
                 phone: "",
@@ -291,7 +290,7 @@ export default {
                     this.userProfile.avatar = `http://localhost:5000${response.data.avatar}`;
                     localStorage.setItem("avatar", response.data.avatar); // 将相对路径存储到 localStorage
                 } else {
-                    this.userProfile.avatar = ""; // 清除头像
+                    this.userProfile.avatar = defaultUserAvatar; // 使用默认头像
                     localStorage.removeItem("avatar"); // 从 localStorage 清除头像
                 }
                 console.log("个人信息加载成功:", response.data);

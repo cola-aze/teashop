@@ -51,8 +51,13 @@
                 >
                 <router-link
                     to="/about-us"
-                    class="block mt-4 lg:inline-block lg:mt-0 text-gray-600 hover:text-gray-900 transition duration-300"
+                    class="block mt-4 lg:inline-block lg:mt-0 text-gray-600 hover:text-gray-900 mr-4 transition duration-300"
                     >关于我们</router-link
+                >
+                <router-link
+                    to="/tea-knowledge"
+                    class="block mt-4 lg:inline-block lg:mt-0 text-gray-600 hover:text-gray-900 ml-4 transition duration-300"
+                    >茶知识</router-link
                 >
             </div>
 
@@ -60,13 +65,14 @@
             <div
                 class="relative flex items-center cursor-pointer"
                 @click="toggleDropdown"
+                ref="avatarDropdown"
             >
                 <span class="text-gray-700 mr-2">{{
                     isLoggedIn ? currentUsername : "用户名称"
                 }}</span>
                 <!-- 用户头像 -->
                 <img
-                    :src="currentAvatar || 'https://via.placeholder.com/40'"
+                    :src="currentAvatar"
                     alt="用户头像"
                     class="w-10 h-10 rounded-full border-2 border-stone-300"
                 />
@@ -97,6 +103,13 @@
                         @click.native="isDropdownOpen = false"
                         >个人信息</router-link
                     >
+                    <router-link
+                        v-if="isLoggedIn && isAdmin"
+                        to="/admin/carousel"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-noto-serif-sc"
+                        @click.native="isDropdownOpen = false"
+                        >后台管理</router-link
+                    >
                     <a
                         v-if="isLoggedIn"
                         href="#"
@@ -109,15 +122,15 @@
         </nav>
 
         <!-- 主内容区域 -->
-        <main
-            class="flex-grow p-8 bg-stone-100 flex items-center justify-center"
-        >
+        <main class="flex-grow bg-stone-100">
             <router-view />
         </main>
     </div>
 </template>
 
 <script>
+import defaultUserAvatar from "@/assets/images/default_user.png"; // 导入默认头像图片
+
 export default {
     name: "App",
     data() {
@@ -126,6 +139,7 @@ export default {
             isLoggedIn: false,
             currentUsername: "用户名称", // 新增的用户名属性
             currentAvatar: "", // 新增的头像属性
+            isAdmin: false, // 新增的管理员状态属性
         };
     },
     computed: {
@@ -145,6 +159,24 @@ export default {
     methods: {
         toggleDropdown() {
             this.isDropdownOpen = !this.isDropdownOpen;
+            if (this.isDropdownOpen) {
+                // 延时添加监听器，防止当前点击事件立即关闭下拉菜单
+                setTimeout(() => {
+                    document.addEventListener("click", this.handleClickOutside);
+                }, 0);
+            } else {
+                document.removeEventListener("click", this.handleClickOutside);
+            }
+        },
+        handleClickOutside(event) {
+            // 检查点击事件是否发生在下拉菜单及其父容器之外
+            if (
+                this.$refs.avatarDropdown &&
+                !this.$refs.avatarDropdown.contains(event.target)
+            ) {
+                this.isDropdownOpen = false;
+                document.removeEventListener("click", this.handleClickOutside); // 关闭后移除监听器
+            }
         },
         checkLoginStatus() {
             this.isLoggedIn = !!localStorage.getItem("token");
@@ -153,15 +185,18 @@ export default {
             const avatarPath = localStorage.getItem("avatar");
             this.currentAvatar = avatarPath
                 ? `http://localhost:5000${avatarPath}`
-                : ""; // 读取头像，并拼接完整URL
+                : defaultUserAvatar; // 如果没有头像路径，使用默认头像
+            this.isAdmin = localStorage.getItem("isAdmin") === "true"; // 读取管理员状态
         },
         logout() {
             localStorage.removeItem("token");
             localStorage.removeItem("username"); // 移除用户名
             localStorage.removeItem("avatar"); // 移除头像
+            localStorage.removeItem("isAdmin"); // 移除管理员状态
             this.isLoggedIn = false;
             this.currentUsername = "用户名称"; // 重置用户名
             this.currentAvatar = ""; // 重置头像
+            this.isAdmin = false; // 重置管理员状态
             this.isDropdownOpen = false;
             this.$router.push("/auth?mode=login"); // 退出后跳转到登录页面
         },

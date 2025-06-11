@@ -34,7 +34,10 @@ const UserSchema = new mongoose.Schema({
     },
     avatar: {
         type: String,
-        default: "https://via.placeholder.com/40", // 默认头像
+    },
+    isAdmin: {
+        type: Boolean,
+        default: false, // 默认不是管理员
     },
     // 可以添加其他用户相关字段，例如 email, avatar, role 等
 });

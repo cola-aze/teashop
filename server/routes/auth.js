@@ -38,6 +38,7 @@ router.post("/register", async (req, res) => {
                     token,
                     username: user.username,
                     avatar: user.avatar,
+                    isAdmin: user.isAdmin,
                 });
             }
         );
@@ -81,6 +82,7 @@ router.post("/login", async (req, res) => {
                     token,
                     username: user.username,
                     avatar: user.avatar,
+                    isAdmin: user.isAdmin,
                 });
             }
         );

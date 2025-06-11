@@ -102,7 +102,7 @@ export default {
                     }
                 );
 
-                const { token, username, avatar } = response.data;
+                const { token, username, avatar, isAdmin } = response.data;
                 localStorage.setItem("token", token);
                 localStorage.setItem("username", username);
                 if (avatar) {
@@ -110,6 +110,9 @@ export default {
                 } else {
                     localStorage.removeItem("avatar"); // 如果没有头像，确保清除
                 }
+                console.log("admin----------------------------", isAdmin);
+
+                localStorage.setItem("isAdmin", isAdmin); // 存储 isAdmin 状态
                 console.log("登录成功，Token:", token);
                 this.$bus.$emit("login-success"); // 触发登录成功事件
                 this.$router.push("/"); // 登录成功后跳转到首页
