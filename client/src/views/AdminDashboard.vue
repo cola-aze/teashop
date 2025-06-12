@@ -86,6 +86,27 @@
                         </router-link>
                     </li>
                     <li class="mb-3">
+                        <!-- 新增：茶知识管理菜单项 -->
+                        <router-link
+                            to="/admin/tea-knowledge"
+                            :class="[
+                                isSidebarCollapsed
+                                    ? 'justify-center pointer-events-none opacity-50'
+                                    : 'justify-start',
+                                isSidebarCollapsed
+                                    ? 'hover:bg-transparent'
+                                    : 'hover:bg-gray-700',
+                            ]"
+                            class="flex items-center py-2 px-4 rounded hover:bg-gray-700 transition duration-300"
+                        >
+                            <i
+                                class="fas fa-leaf mr-3"
+                                :class="{ 'mr-0': isSidebarCollapsed }"
+                            ></i>
+                            <span v-if="!isSidebarCollapsed">茶知识管理</span>
+                        </router-link>
+                    </li>
+                    <li class="mb-3">
                         <router-link
                             to="/admin/users"
                             :class="[
@@ -103,6 +124,27 @@
                                 :class="{ 'mr-0': isSidebarCollapsed }"
                             ></i>
                             <span v-if="!isSidebarCollapsed">用户权限管理</span>
+                        </router-link>
+                    </li>
+                    <li class="mb-3">
+                        <!-- 新增：数据字典管理菜单项 -->
+                        <router-link
+                            to="/admin/dictionary"
+                            :class="[
+                                isSidebarCollapsed
+                                    ? 'justify-center pointer-events-none opacity-50'
+                                    : 'justify-start',
+                                isSidebarCollapsed
+                                    ? 'hover:bg-transparent'
+                                    : 'hover:bg-gray-700',
+                            ]"
+                            class="flex items-center py-2 px-4 rounded hover:bg-gray-700 transition duration-300"
+                        >
+                            <i
+                                class="fas fa-book mr-3"
+                                :class="{ 'mr-0': isSidebarCollapsed }"
+                            ></i>
+                            <span v-if="!isSidebarCollapsed">数据字典管理</span>
                         </router-link>
                     </li>
                     <!-- 更多管理项可以添加在这里 -->

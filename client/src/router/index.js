@@ -11,7 +11,9 @@ import CarouselAdmin from "../views/admin/CarouselAdmin.vue";
 import PosterAdmin from "../views/admin/PosterAdmin.vue";
 import ProductAdmin from "../views/admin/ProductAdmin.vue";
 import UserAdmin from "../views/admin/UserAdmin.vue";
+import TeaKnowledgeAdmin from "../views/admin/TeaKnowledgeAdmin.vue";
 import TeaKnowledge from "../views/TeaKnowledge.vue";
+import DictionaryAdmin from "../views/admin/DictionaryAdmin.vue"; // 新增：引入数据字典管理组件
 
 Vue.use(VueRouter);
 
@@ -86,6 +88,18 @@ const routes = [
                 path: "users", // /admin/users
                 name: "AdminUsers",
                 component: UserAdmin,
+                meta: { requiresAuth: true, isAdmin: true },
+            },
+            {
+                path: "tea-knowledge", // /admin/tea-knowledge
+                name: "AdminTeaKnowledge",
+                component: TeaKnowledgeAdmin,
+                meta: { requiresAuth: true, isAdmin: true },
+            },
+            {
+                path: "dictionary", // 新增：/admin/dictionary
+                name: "AdminDictionary",
+                component: DictionaryAdmin,
                 meta: { requiresAuth: true, isAdmin: true },
             },
         ],

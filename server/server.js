@@ -18,6 +18,8 @@ app.use(express.json()); // 用于解析 JSON 格式的请求体
 app.use(express.static("public")); // 服务静态文件，例如上传的图片
 app.use("/uploads", express.static("uploads")); // 新增：服务上传的图片文件
 
+mongoose.set('strictQuery', true);
+
 // 连接 MongoDB
 mongoose
     .connect(MONGODB_URI, {

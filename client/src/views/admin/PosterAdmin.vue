@@ -336,7 +336,7 @@ export default {
             try {
                 const token = localStorage.getItem("token");
                 const response = await axios.get(
-                    "http://localhost:5000/api/admin/poster",
+                    "http://localhost:5000/api/admin/posters",
                     {
                         headers: {
                             "x-auth-token": token,
@@ -378,7 +378,7 @@ export default {
                 formData.append("order", this.currentItem.order);
 
                 const response = await axios.post(
-                    "http://localhost:5000/api/admin/poster",
+                    "http://localhost:5000/api/admin/posters",
                     formData,
                     {
                         headers: {
@@ -440,7 +440,7 @@ export default {
                 formData.append("order", this.currentItem.order);
 
                 const response = await axios.put(
-                    `http://localhost:5000/api/admin/poster/${this.currentItem._id}`,
+                    `http://localhost:5000/api/admin/posters/${this.currentItem._id}`,
                     formData,
                     {
                         headers: {
@@ -472,7 +472,7 @@ export default {
                 try {
                     const token = localStorage.getItem("token");
                     await axios.delete(
-                        `http://localhost:5000/api/admin/poster/${id}`,
+                        `http://localhost:5000/api/admin/posters/${id}`,
                         {
                             headers: {
                                 "x-auth-token": token,
