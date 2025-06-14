@@ -15,7 +15,7 @@ const ProductSchema = new mongoose.Schema({
         required: true,
         min: 0,
     },
-    imageUrl: {
+    imageUrl: { // 修改为 imageUrl
         type: String,
         required: true,
     },
@@ -34,7 +34,7 @@ const ProductSchema = new mongoose.Schema({
             "yellow",
             "reprocessed",
             "substitute",
-        ], // 茶叶分类，可以根据实际需求调整
+        ],
         trim: true,
     },
     stock: {
@@ -56,4 +56,5 @@ const ProductSchema = new mongoose.Schema({
     },
 });
 
-module.exports = mongoose.model("Product", ProductSchema);
+// 检查模型是否已经存在，如果存在则直接使用，否则编译新模型
+module.exports = mongoose.models.Product || mongoose.model("Product", ProductSchema);

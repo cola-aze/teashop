@@ -40,6 +40,52 @@
             <h3 class="text-xl font-semibold mb-4 text-gray-700">
                 {{ isEditing ? "编辑茶品" : "新增茶品" }}
             </h3>
+            <!-- 类别字段 (已移到顶部) -->
+            <div class="mb-4">
+                <label
+                    for="category"
+                    class="block text-gray-700 text-sm font-bold mb-2"
+                    >类别:</label
+                >
+                <select
+                    id="category"
+                    v-model="currentItem.category"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
+                    required
+                >
+                    <option value="" disabled>请选择类别</option>
+                    <option
+                        v-for="category in teaCategories"
+                        :key="category._id"
+                        :value="category.value"
+                    >
+                        {{ category.description }}
+                    </option>
+                </select>
+            </div>
+            <!-- 等级字段 (已移到顶部) -->
+            <div class="mb-4">
+                <label
+                    for="level"
+                    class="block text-gray-700 text-sm font-bold mb-2"
+                    >等级:</label
+                >
+                <select
+                    id="level"
+                    v-model="currentItem.level"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
+                    required
+                >
+                    <option value="" disabled>请选择等级</option>
+                    <option
+                        v-for="level in productLevels"
+                        :key="level._id"
+                        :value="level.value"
+                    >
+                        {{ level.description }}
+                    </option>
+                </select>
+            </div>
             <div class="mb-4">
                 <label
                     for="name"
@@ -115,29 +161,6 @@
             </div>
             <div class="mb-4">
                 <label
-                    for="category"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >类别:</label
-                >
-                <!-- 修改为下拉选择框，并从 teaCategories 中获取选项 -->
-                <select
-                    id="category"
-                    v-model="currentItem.category"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    required
-                >
-                    <option value="" disabled>请选择类别</option>
-                    <option
-                        v-for="category in teaCategories"
-                        :key="category._id"
-                        :value="category.value"
-                    >
-                        {{ category.description }}
-                    </option>
-                </select>
-            </div>
-            <div class="mb-4">
-                <label
                     for="order"
                     class="block text-gray-700 text-sm font-bold mb-2"
                     >排序 (越小越靠前):</label
@@ -148,20 +171,6 @@
                     v-model.number="currentItem.order"
                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
                     placeholder="请输入排序值"
-                />
-            </div>
-            <div class="mb-4">
-                <label
-                    for="level"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >等级:</label
-                >
-                <input
-                    type="text"
-                    id="level"
-                    v-model="currentItem.level"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    placeholder="请输入茶品等级 (如: 特级, 一级等)"
                 />
             </div>
             <div class="flex items-center justify-between">
@@ -214,7 +223,7 @@
                     >
                         <td class="py-3 px-6 text-left">
                             <img
-                                :src="product.image_url"
+                                :src="getImageSrc(product.imageUrl)"
                                 alt="Product Image"
                                 class="w-16 h-16 object-cover rounded-md"
                             />
@@ -262,7 +271,7 @@ export default {
                 name: "",
                 description: "",
                 price: 0,
-                image_url: "", // 将 imageUrl 改为 image_url 以匹配后端模型
+                imageUrl: "",
                 stock: 0,
                 category: "",
                 order: 0,
@@ -271,14 +280,23 @@ export default {
             isEditing: false,
             error: null,
             successMessage: null,
-            teaCategories: [], // 新增：用于存储从字典获取的茶类别
+            teaCategories: [],
+            productLevels: [],
         };
     },
     mounted() {
         this.fetchProducts();
-        this.fetchTeaCategories(); // 新增：在组件挂载时获取茶类别
+        this.fetchTeaCategories();
+        this.fetchProductLevels();
     },
     methods: {
+        getImageSrc(imageUrl) {
+            if (!imageUrl) return "";
+            if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                return imageUrl;
+            }
+            return `http://localhost:5000${imageUrl}`;
+        },
         async fetchProducts() {
             try {
                 const token = localStorage.getItem("token");
@@ -302,7 +320,6 @@ export default {
                 console.error(err);
             }
         },
-        // 新增方法：获取茶类别
         async fetchTeaCategories() {
             try {
                 const token = localStorage.getItem("token");
@@ -320,7 +337,27 @@ export default {
                     "获取茶类别失败：" +
                     (err.response ? err.response.data.msg : err.message);
                 console.error(err);
-                this.teaCategories = []; // 获取失败时清空类别
+                this.teaCategories = [];
+            }
+        },
+        async fetchProductLevels() {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get(
+                    "http://localhost:5000/api/admin/dictionary?type=product_level",
+                    {
+                        headers: {
+                            "x-auth-token": token,
+                        },
+                    }
+                );
+                this.productLevels = response.data.sort((a, b) => a.order - b.order || a.value.localeCompare(b.value));
+            } catch (err) {
+                this.error =
+                    "获取产品等级失败：" +
+                    (err.response ? err.response.data.msg : err.message);
+                console.error(err);
+                this.productLevels = [];
             }
         },
         async addItem() {
@@ -426,7 +463,7 @@ export default {
                 name: "",
                 description: "",
                 price: 0,
-                image_url: "",
+                imageUrl: "",
                 stock: 0,
                 category: "",
                 order: 0,

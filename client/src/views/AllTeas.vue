@@ -30,7 +30,7 @@
                     >
                         <router-link :to="`/product/${product._id}`">
                             <img
-                                :src="getImageSrc(product.imageUrl)"
+                                :src="getImageSrc(product.image_url)"
                                 alt="产品图片"
                                 class="w-full h-48 object-cover"
                             />
