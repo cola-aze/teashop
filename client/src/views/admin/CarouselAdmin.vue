@@ -63,7 +63,7 @@
                 >
                 <div class="flex items-center">
                     <img
-                        :src="imagePreviewUrl || currentItem.imageUrl"
+                        :src="getAbsoluteImageUrl(imagePreviewUrl || currentItem.imageUrl)"
                         alt="图片预览"
                         class="w-32 h-auto object-cover rounded-md border border-gray-300"
                     />
@@ -198,7 +198,7 @@
                     >
                         <td class="py-3 px-6 text-left">
                             <img
-                                :src="`http://localhost:5000${item.imageUrl}`"
+                                :src="getAbsoluteImageUrl(item.imageUrl)"
                                 alt="Carousel Image"
                                 class="w-24 h-16 object-cover rounded-md"
                             />
@@ -206,7 +206,7 @@
                         <td class="py-3 px-6 text-left">{{ item.title }}</td>
                         <td class="py-3 px-6 text-left">
                             <a
-                                :href="item.linkUrl"
+                                :href="getCarouselLink(item.linkUrl)"
                                 target="_blank"
                                 class="text-blue-500 hover:underline"
                                 >{{ item.linkUrl || "无" }}</a
@@ -235,7 +235,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import { getCarouselItems, addCarouselItem, updateCarouselItem, deleteCarouselItem } from '@/api/admin';
 
 export default {
     name: "CarouselAdmin",
@@ -243,274 +243,168 @@ export default {
         return {
             carouselItems: [],
             currentItem: {
+                _id: null,
                 imageUrl: "",
                 title: "",
                 linkUrl: "",
                 order: 0,
             },
+            imagePreviewUrl: "",
+            imageFile: null,
             isEditing: false,
-            error: null,
             successMessage: null,
-            selectedFile: null,
-            imagePreviewUrl: null,
-            linkType: "external",
+            error: null,
+            linkType: 'internal',
         };
     },
     mounted() {
         this.fetchCarouselItems();
     },
     methods: {
-        handleFileChange(event) {
-            const file = event.target.files[0];
-            if (file) {
-                this.selectedFile = file;
-                this.imagePreviewUrl = URL.createObjectURL(file);
-                this.currentItem.imageUrl = "";
-                this.linkType = "external";
-            } else {
-                this.selectedFile = null;
-                this.imagePreviewUrl = null;
-            }
-        },
-        removeImage() {
-            this.selectedFile = null;
-            this.imagePreviewUrl = null;
-            this.currentItem.imageUrl = "";
-            this.linkType = "external";
-            const fileInput = document.getElementById("imageUpload");
-            if (fileInput) {
-                fileInput.value = "";
-            }
-        },
         getAbsoluteImageUrl(relativeUrl) {
             if (!relativeUrl) return "";
             if (
                 relativeUrl.startsWith("http://") ||
-                relativeUrl.startsWith("https://")
+                relativeUrl.startsWith("https://") ||
+                relativeUrl.startsWith("blob:") ||
+                relativeUrl.startsWith("data:")
             ) {
                 return relativeUrl;
             }
             return `http://localhost:5000${relativeUrl}`;
         },
-        validateLinkInput() {
-            const url = this.currentItem.linkUrl.trim();
-            if (!url) return true; // Empty URL is fine
-
-            if (this.linkType === "internal") {
-                if (url.startsWith("http://") || url.startsWith("https://")) {
-                    this.error =
-                        '您选择了"内部链接"，但输入的URL看起来像外部链接。请检查链接类型或URL格式。';
-                    return false;
-                }
-            } else {
-                // external
-                if (
-                    url.startsWith("/") &&
-                    !(url.startsWith("http://") || url.startsWith("https://"))
-                ) {
-                    this.error =
-                        '您选择了"外部链接"，但输入的URL看起来像内部链接。请检查链接类型或URL格式。';
-                    return false;
-                }
+        getCarouselLink(linkUrl) {
+            if (!linkUrl) return "#";
+            if (
+                linkUrl.startsWith("http://") ||
+                linkUrl.startsWith("https://")
+            ) {
+                return linkUrl;
             }
-            return true;
+            return linkUrl;
+        },
+        handleFileChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                this.imageFile = file;
+                this.imagePreviewUrl = URL.createObjectURL(file);
+                this.currentItem.imageUrl = "";
+            }
+        },
+        removeImage() {
+            this.imageFile = null;
+            this.imagePreviewUrl = "";
+            this.currentItem.imageUrl = "";
+            if (this.isEditing) {
+                this.currentItem.removeImage = true;
+            }
         },
         async fetchCarouselItems() {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/carousel",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
-                this.carouselItems = response.data.sort(
-                    (a, b) => a.order - b.order
-                );
+                const response = await getCarouselItems();
+                this.carouselItems = response.data;
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "获取轮播图失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("获取轮播图失败:", err.message);
+                this.error = err.message || "获取轮播图失败，请稍后再试。";
             }
         },
         async addItem() {
             this.error = null;
             this.successMessage = null;
+
+            if (!this.imageFile && !this.currentItem.imageUrl) {
+                this.error = "请选择图片！";
+                return;
+            }
+
             try {
-                // Validate link input before proceeding
-                if (!this.validateLinkInput()) {
-                    return; // Stop submission if validation fails
-                }
-
-                const token = localStorage.getItem("token");
                 const formData = new FormData();
-
-                if (this.selectedFile) {
-                    formData.append("image", this.selectedFile);
-                } else if (this.currentItem.imageUrl) {
-                    formData.append("imageUrl", this.currentItem.imageUrl);
-                } else {
-                    this.error = "请上传图片或提供图片URL";
-                    return;
+                formData.append('title', this.currentItem.title);
+                formData.append('linkUrl', this.currentItem.linkUrl);
+                formData.append('order', this.currentItem.order);
+                if (this.imageFile) {
+                    formData.append('image', this.imageFile);
                 }
 
-                formData.append("title", this.currentItem.title);
-                formData.append("linkUrl", this.formatLinkUrlForSave());
-                formData.append("order", this.currentItem.order);
-
-                const response = await axios.post(
-                    "http://localhost:5000/api/admin/carousel",
-                    formData,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
-                this.carouselItems.push(response.data);
-                this.carouselItems.sort((a, b) => a.order - b.order);
+                const response = await addCarouselItem(formData);
+                this.successMessage = response.message;
+                this.fetchCarouselItems();
                 this.resetForm();
-                this.successMessage = "轮播图新增成功！";
             } catch (err) {
-                this.error =
-                    "新增轮播图失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("新增轮播图失败:", err.message);
+                this.error = err.message || "新增轮播图失败，请稍后再试。";
             }
         },
         editItem(item) {
             this.isEditing = true;
             this.currentItem = { ...item };
-            if (
-                item.linkUrl &&
-                (item.linkUrl.startsWith("http://") ||
-                    item.linkUrl.startsWith("https://"))
-            ) {
-                this.linkType = "external";
-            } else {
-                this.linkType = "internal";
-            }
             this.imagePreviewUrl = this.getAbsoluteImageUrl(item.imageUrl);
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            this.imageFile = null;
+            this.currentItem.removeImage = false;
         },
         async updateItem() {
             this.error = null;
             this.successMessage = null;
+
+            if (!this.imageFile && !this.currentItem.imageUrl && !this.currentItem.removeImage) {
+                this.error = "请选择图片或确认是否移除旧图片！";
+                return;
+            }
+
             try {
-                // Validate link input before proceeding
-                if (!this.validateLinkInput()) {
-                    return; // Stop submission if validation fails
-                }
-
-                const token = localStorage.getItem("token");
                 const formData = new FormData();
+                formData.append('title', this.currentItem.title);
+                formData.append('linkUrl', this.currentItem.linkUrl);
+                formData.append('order', this.currentItem.order);
 
-                if (this.selectedFile) {
-                    formData.append("image", this.selectedFile);
-                } else {
-                    formData.append(
-                        "imageUrl",
-                        this.currentItem.imageUrl || ""
-                    );
+                if (this.imageFile) {
+                    formData.append('image', this.imageFile);
+                } else if (this.currentItem.removeImage) {
+                    formData.append('removeImage', 'true');
+                }
+                else if (this.currentItem.imageUrl) {
+                    formData.append('imageUrl', this.currentItem.imageUrl);
                 }
 
-                formData.append("title", this.currentItem.title);
-                formData.append("linkUrl", this.formatLinkUrlForSave());
-                formData.append("order", this.currentItem.order);
-
-                const response = await axios.put(
-                    `http://localhost:5000/api/admin/carousel/${this.currentItem._id}`,
-                    formData,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
-                const index = this.carouselItems.findIndex(
-                    (item) => item._id === response.data._id
-                );
-                if (index !== -1) {
-                    this.$set(this.carouselItems, index, response.data);
-                }
-                this.carouselItems.sort((a, b) => a.order - b.order);
+                const response = await updateCarouselItem(this.currentItem._id, formData);
+                this.successMessage = response.message;
+                this.fetchCarouselItems();
                 this.resetForm();
-                this.successMessage = "轮播图更新成功！";
             } catch (err) {
-                this.error =
-                    "更新轮播图失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("更新轮播图失败:", err.message);
+                this.error = err.message || "更新轮播图失败，请稍后再试。";
             }
         },
         async deleteItem(id) {
-            if (confirm("确定要删除此轮播图吗？")) {
+            if (confirm("确定要删除此轮播图项吗？")) {
                 this.error = null;
                 this.successMessage = null;
                 try {
-                    const token = localStorage.getItem("token");
-                    await axios.delete(
-                        `http://localhost:5000/api/admin/carousel/${id}`,
-                        {
-                            headers: {
-                                "x-auth-token": token,
-                            },
-                        }
-                    );
-                    this.carouselItems = this.carouselItems.filter(
-                        (item) => item._id !== id
-                    );
-                    this.successMessage = "轮播图已删除！";
+                    const response = await deleteCarouselItem(id);
+                    this.successMessage = response.message;
+                    this.fetchCarouselItems();
                 } catch (err) {
-                    this.error =
-                        "删除轮播图失败：" +
-                        (err.response ? err.response.data.msg : err.message);
-                    console.error(err);
+                    console.error("删除轮播图失败:", err.message);
+                    this.error = err.message || "删除轮播图失败，请稍后再试。";
                 }
             }
         },
-        cancelEdit() {
-            this.resetForm();
-            this.isEditing = false;
-        },
         resetForm() {
             this.currentItem = {
+                _id: null,
                 imageUrl: "",
                 title: "",
                 linkUrl: "",
                 order: 0,
             };
-            this.selectedFile = null;
-            this.imagePreviewUrl = null;
-            this.linkType = "external";
-            const fileInput = document.getElementById("imageUpload");
-            if (fileInput) {
-                fileInput.value = "";
-            }
+            this.imageFile = null;
+            this.imagePreviewUrl = "";
+            this.isEditing = false;
+            this.linkType = 'internal';
         },
-        // Helper to format linkUrl based on linkType before saving
-        formatLinkUrlForSave() {
-            let url = this.currentItem.linkUrl.trim();
-            if (!url) return "";
-
-            if (this.linkType === "internal") {
-                // Strip any http(s)://localhost:5000 prefix for internal links
-                url = url.replace(/^(https?:\/\/localhost:5000)?/, "");
-                // Ensure it starts with a / if it's not empty and doesn't already
-                if (url && !url.startsWith("/")) {
-                    url = "/" + url;
-                }
-            } else {
-                // external
-                // If it's an external link and doesn't have a protocol, prepend https://
-                if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                    url = "https://" + url;
-                }
-            }
-            return url;
+        cancelEdit() {
+            this.resetForm();
         },
     },
 };

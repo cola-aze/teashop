@@ -52,7 +52,7 @@
                     @change="handleFileChange"
                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
                     accept="image/*"
-                    :required="!currentItem.imageUrl && !imagePreviewUrl"
+                    :required="!currentItem.imageUrl && !imagePreviewUrl && !isEditing"
                 />
             </div>
 
@@ -210,7 +210,7 @@
                         </td>
                         <td class="py-3 px-6 text-left">
                             <a
-                                :href="item.linkUrl"
+                                :href="getPosterLink(item.linkUrl)"
                                 target="_blank"
                                 class="text-blue-500 hover:underline"
                                 >{{ item.linkUrl || "无" }}</a
@@ -239,7 +239,8 @@
 </template>
 
 <script>
-import axios from "axios";
+import { getPosterItems, addPosterItem, updatePosterItem, deletePosterItem } from '@/api/admin';
+// import axios from "axios"; // 移除 axios 导入
 
 export default {
     name: "PosterAdmin",
@@ -247,7 +248,8 @@ export default {
         return {
             posterItems: [],
             currentItem: {
-                imageUrl: "",
+                _id: null, // 新增 _id 字段用于编辑时存储ID
+                imageUrl: "", // 存储相对路径
                 title: "",
                 linkUrl: "",
                 order: 0,
@@ -255,9 +257,9 @@ export default {
             isEditing: false,
             error: null,
             successMessage: null,
-            selectedFile: null,
-            imagePreviewUrl: null,
-            linkType: "external",
+            imageFile: null, // 用于存储待上传的图片文件
+            imagePreviewUrl: null, // 用于显示本地选择的图片预览
+            linkType: "internal", // 默认为内部链接
         };
     },
     mounted() {
@@ -267,144 +269,105 @@ export default {
         handleFileChange(event) {
             const file = event.target.files[0];
             if (file) {
-                this.selectedFile = file;
+                this.imageFile = file;
                 this.imagePreviewUrl = URL.createObjectURL(file);
+                // 清除已有的 imageUrl，表示有新图片待上传
                 this.currentItem.imageUrl = "";
             } else {
-                this.selectedFile = null;
+                this.imageFile = null;
                 this.imagePreviewUrl = null;
             }
         },
         removeImage() {
-            this.selectedFile = null;
+            this.imageFile = null;
             this.imagePreviewUrl = null;
-            this.currentItem.imageUrl = "";
+            this.currentItem.imageUrl = ""; // 清除现有图片URL
+            // 如果是编辑模式，还需要标记图片需要被移除
+            if (this.isEditing) {
+                this.currentItem.removeImage = true; // 标记图片需要被移除
+            }
             const fileInput = document.getElementById("imageUpload");
             if (fileInput) {
                 fileInput.value = "";
             }
         },
-        getAbsoluteImageUrl(relativeUrl) {
-            if (!relativeUrl) return "";
+        getAbsoluteImageUrl(relativePath) {
+            if (!relativePath) return "";
             if (
-                relativeUrl.startsWith("http://") ||
-                relativeUrl.startsWith("https://")
+                relativePath.startsWith("http://") ||
+                relativePath.startsWith("https://") ||
+                relativePath.startsWith("blob:") ||
+                relativePath.startsWith("data:")
             ) {
-                return relativeUrl;
+                return relativePath;
             }
-            return `http://localhost:5000${relativeUrl}`;
+            return `http://localhost:5000${relativePath}`;
         },
-        formatLinkUrlForSave() {
-            let url = this.currentItem.linkUrl.trim();
-            if (!url) return "";
-
-            if (this.linkType === "internal") {
-                url = url.replace(/^(https?:\/\/localhost:5000)?/, "");
-                if (url && !url.startsWith("/")) {
-                    url = "/" + url;
-                }
-            } else {
-                if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                    url = "https://" + url;
-                }
+        // Helper to get poster item link (removes backend URL for internal links)
+        getPosterLink(linkUrl) {
+            if (!linkUrl) return "#";
+            // 如果是内部链接，并且以后端URL开头，则移除后端URL部分
+            if (linkUrl.startsWith(`http://localhost:5000/`)) {
+                return linkUrl.replace(`http://localhost:5000`, '');
             }
-            return url;
-        },
-        validateLinkInput() {
-            const url = this.currentItem.linkUrl.trim();
-            if (!url) return true;
-
-            if (this.linkType === "internal") {
-                if (url.startsWith("http://") || url.startsWith("https://")) {
-                    this.error =
-                        '您选择了"内部链接"，但输入的URL看起来像外部链接。请检查链接类型或URL格式。';
-                    return false;
-                }
-            } else {
-                if (
-                    url.startsWith("/") &&
-                    !(url.startsWith("http://") || url.startsWith("https://"))
-                ) {
-                    this.error =
-                        '您选择了"外部链接"，但输入的URL看起来像内部链接。请检查链接类型或URL格式。';
-                    return false;
-                }
-            }
-            return true;
+            return linkUrl;
         },
         async fetchPosterItems() {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/posters",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await getPosterItems(); // 使用封装的 API
                 this.posterItems = response.data.sort(
                     (a, b) => a.order - b.order
-                );
+                ); // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
             } catch (err) {
-                this.error =
-                    "获取海报图失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("获取海报图失败:", err.message);
+                this.error = err.message || "获取海报图失败，请稍后再试。";
             }
         },
         async addItem() {
             this.error = null;
             this.successMessage = null;
-            try {
-                if (!this.validateLinkInput()) {
-                    return;
-                }
+            // 如果没有选择图片且没有旧图，则提示
+            if (!this.imageFile && !this.currentItem.imageUrl) {
+                this.error = "请选择图片！";
+                return;
+            }
 
-                const token = localStorage.getItem("token");
+            try {
                 const formData = new FormData();
 
-                if (this.selectedFile) {
-                    formData.append("image", this.selectedFile);
+                if (this.imageFile) {
+                    formData.append("image", this.imageFile);
                 } else if (this.currentItem.imageUrl) {
                     formData.append("imageUrl", this.currentItem.imageUrl);
                 } else {
-                    this.error = "请上传图片";
-                    return;
+                    // 如果都没有，理论上前面已经拦截了，这里作为双重保险
+                    formData.append("imageUrl", ""); 
                 }
 
                 formData.append("title", this.currentItem.title);
-                formData.append("linkUrl", this.formatLinkUrlForSave());
+                formData.append("linkUrl", this.currentItem.linkUrl); // 直接发送，由后端处理格式
                 formData.append("order", this.currentItem.order);
 
-                const response = await axios.post(
-                    "http://localhost:5000/api/admin/posters",
-                    formData,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                            "Content-Type": "multipart/form-data",
-                        },
-                    }
-                );
+                const response = await addPosterItem(formData); // 使用封装的 API
                 this.posterItems.push(response.data);
                 this.posterItems.sort((a, b) => a.order - b.order);
                 this.resetForm();
-                this.successMessage = "海报图新增成功！";
+                this.successMessage = response.message; // 统一返回体中的 message
             } catch (err) {
-                this.error =
-                    "新增海报图失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("新增海报图失败:", err.message);
+                this.error = err.message || "新增海报图失败，请稍后再试。";
             }
         },
         editItem(item) {
-            this.currentItem = { ...item };
             this.isEditing = true;
+            this.currentItem = { ...item };
+            this.currentItem._id = item._id; // 确保_id被复制
             this.error = null;
             this.successMessage = null;
             this.imagePreviewUrl = this.getAbsoluteImageUrl(item.imageUrl);
-            this.selectedFile = null;
+            this.imageFile = null; // 清空文件，防止重新提交时带上旧文件
+            // 根据 linkUrl 判断链接类型，如果以 http(s):// 开头则为外部链接
             if (
                 item.linkUrl &&
                 (item.linkUrl.startsWith("http://") ||
@@ -414,55 +377,41 @@ export default {
             } else {
                 this.linkType = "internal";
             }
+            window.scrollTo({ top: 0, behavior: "smooth" });
         },
         async updateItem() {
             this.error = null;
             this.successMessage = null;
             try {
-                if (!this.validateLinkInput()) {
-                    return;
-                }
-
-                const token = localStorage.getItem("token");
                 const formData = new FormData();
 
-                if (this.selectedFile) {
-                    formData.append("image", this.selectedFile);
-                } else if (this.currentItem.imageUrl !== undefined) {
-                    formData.append(
-                        "imageUrl",
-                        this.currentItem.imageUrl || ""
-                    );
+                if (this.imageFile) {
+                    formData.append("image", this.imageFile);
+                } else if (this.currentItem.imageUrl === "") {
+                    // 如果图片被移除（imageUrl清空），则明确发送一个指示给后端
+                    formData.append("removeImage", "true");
+                } else {
+                    // 如果没有新文件，且 imageUrl 存在，则发送旧的 imageUrl
+                    formData.append("imageUrl", this.currentItem.imageUrl);
                 }
 
                 formData.append("title", this.currentItem.title);
-                formData.append("linkUrl", this.formatLinkUrlForSave());
+                formData.append("linkUrl", this.currentItem.linkUrl); // 直接发送，由后端处理格式
                 formData.append("order", this.currentItem.order);
 
-                const response = await axios.put(
-                    `http://localhost:5000/api/admin/posters/${this.currentItem._id}`,
-                    formData,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                            "Content-Type": "multipart/form-data",
-                        },
-                    }
-                );
+                const response = await updatePosterItem(this.currentItem._id, formData); // 使用封装的 API
                 const index = this.posterItems.findIndex(
                     (item) => item._id === response.data._id
                 );
                 if (index !== -1) {
-                    this.$set(this.posterItems, index, response.data);
+                    this.$set(this.posterItems, index, response.data); // 统一返回体，实际数据在 data 字段下
                 }
                 this.posterItems.sort((a, b) => a.order - b.order);
                 this.resetForm();
-                this.successMessage = "海报图更新成功！";
+                this.successMessage = response.message; // 统一返回体中的 message
             } catch (err) {
-                this.error =
-                    "更新海报图失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("更新海报图失败:", err.message);
+                this.error = err.message || "更新海报图失败，请稍后再试。";
             }
         },
         async deleteItem(id) {
@@ -470,24 +419,14 @@ export default {
                 this.error = null;
                 this.successMessage = null;
                 try {
-                    const token = localStorage.getItem("token");
-                    await axios.delete(
-                        `http://localhost:5000/api/admin/posters/${id}`,
-                        {
-                            headers: {
-                                "x-auth-token": token,
-                            },
-                        }
-                    );
+                    const response = await deletePosterItem(id); // 使用封装的 API
                     this.posterItems = this.posterItems.filter(
                         (item) => item._id !== id
                     );
-                    this.successMessage = "海报图已删除！";
+                    this.successMessage = response.message; // 统一返回体中的 message
                 } catch (err) {
-                    this.error =
-                        "删除海报图失败：" +
-                        (err.response ? err.response.data.msg : err.message);
-                    console.error(err);
+                    console.error("删除海报图失败:", err.message);
+                    this.error = err.message || "删除海报图失败，请稍后再试。";
                 }
             }
         },
@@ -497,14 +436,18 @@ export default {
         },
         resetForm() {
             this.currentItem = {
+                _id: null,
                 imageUrl: "",
                 title: "",
                 linkUrl: "",
                 order: 0,
             };
-            this.selectedFile = null;
+            this.isEditing = false;
+            this.error = null;
+            this.successMessage = null;
+            this.imageFile = null;
             this.imagePreviewUrl = null;
-            this.linkType = "external";
+            this.linkType = "internal"; // 重置为默认内部链接
             const fileInput = document.getElementById("imageUpload");
             if (fileInput) {
                 fileInput.value = "";

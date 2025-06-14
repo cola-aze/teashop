@@ -4,14 +4,14 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
 // 注册用户
-router.post("/register", async (req, res) => {
+router.post("/register", async(req, res) => {
     try {
         const { username, password } = req.body;
 
         // 检查用户是否已存在
         let user = await User.findOne({ username });
         if (user) {
-            return res.status(400).json({ msg: "用户已存在" });
+            return res.error(400, "用户已存在");
         }
 
         user = new User({
@@ -30,39 +30,38 @@ router.post("/register", async (req, res) => {
 
         jwt.sign(
             payload,
-            process.env.JWT_SECRET,
-            { expiresIn: "1h" },
+            process.env.JWT_SECRET, { expiresIn: "1h" },
             (err, token) => {
                 if (err) throw err;
-                res.json({
+                res.success({
                     token,
                     username: user.username,
                     avatar: user.avatar,
                     isAdmin: user.isAdmin,
-                });
+                }, "注册成功");
             }
         );
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("服务器错误");
+        res.error(500, "服务器错误", err.message);
     }
 });
 
 // 登录用户
-router.post("/login", async (req, res) => {
+router.post("/login", async(req, res) => {
     try {
         const { username, password } = req.body;
 
         // 检查用户是否存在
         let user = await User.findOne({ username });
         if (!user) {
-            return res.status(400).json({ msg: "无效的凭据" });
+            return res.error(400, "无效的凭据");
         }
 
         // 验证密码
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            return res.status(400).json({ msg: "无效的凭据" });
+            return res.error(400, "无效的凭据");
         }
 
         // 生成 JWT Token
@@ -74,21 +73,20 @@ router.post("/login", async (req, res) => {
 
         jwt.sign(
             payload,
-            process.env.JWT_SECRET,
-            { expiresIn: "1h" },
+            process.env.JWT_SECRET, { expiresIn: "1h" },
             (err, token) => {
                 if (err) throw err;
-                res.json({
+                res.success({
                     token,
                     username: user.username,
                     avatar: user.avatar,
                     isAdmin: user.isAdmin,
-                });
+                }, "登录成功");
             }
         );
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("服务器错误");
+        res.error(500, "服务器错误", err.message);
     }
 });
 

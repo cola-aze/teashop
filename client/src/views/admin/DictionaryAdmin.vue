@@ -194,7 +194,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import { getDictionaryItems, addDictionaryItem, updateDictionaryItem, deleteDictionaryItem } from '@/api/admin';
 
 export default {
     name: "DictionaryAdmin",
@@ -202,6 +202,7 @@ export default {
         return {
             dictionaryItems: [],
             currentItem: {
+                _id: null,
                 type: "",
                 value: "",
                 description: "",
@@ -210,24 +211,22 @@ export default {
             isEditing: false,
             error: null,
             successMessage: null,
-            existingTypes: [], // 存储所有唯一的字典类型
-            selectedTypeOption: "", // 控制下拉框的选择
+            existingTypes: [],
+            selectedTypeOption: "",
         };
     },
     watch: {
         selectedTypeOption(newVal) {
             if (newVal === "new_type") {
-                this.currentItem.type = ""; // 清空类型，等待用户输入新类型
+                this.currentItem.type = "";
             } else {
-                this.currentItem.type = newVal; // 设置为选中的类型
+                this.currentItem.type = newVal;
             }
         },
-        // 当currentItem.type被外部（如editItem）改变时，同步selectedTypeOption
         "currentItem.type"(newVal) {
             if (this.existingTypes.includes(newVal)) {
                 this.selectedTypeOption = newVal;
             } else if (newVal) {
-                // 如果是新类型，但不是通过"new_type"选项输入的，则默认为"new_type"
                 this.selectedTypeOption = "new_type";
             } else {
                 this.selectedTypeOption = "";
@@ -236,47 +235,31 @@ export default {
     },
     mounted() {
         this.fetchDictionaryItems();
-        this.fetchExistingTypes(); // 获取所有现有字典类型
+        this.fetchExistingTypes();
     },
     methods: {
         async fetchDictionaryItems() {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await getDictionaryItems();
                 this.dictionaryItems = response.data.sort((a, b) => a.type.localeCompare(b.type) || a.order - b.order || a.value.localeCompare(b.value));
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "获取字典项失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("获取字典项失败:", err.message);
+                this.error = err.message || "获取字典项失败。";
             }
         },
         async fetchExistingTypes() {
             try {
-                const token = localStorage.getItem("token");
-                // 获取所有字典项，然后提取唯一的类型
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await getDictionaryItems();
                 const types = new Set();
                 response.data.forEach((item) => {
                     types.add(item.type);
                 });
                 this.existingTypes = Array.from(types).sort();
+                this.successMessage = response.message;
             } catch (err) {
-                console.error("获取字典类型失败：", err);
+                console.error("获取字典类型失败:", err.message);
+                this.error = err.message || "获取字典类型失败。";
             }
         },
         async addItem() {
@@ -287,32 +270,21 @@ export default {
                 return;
             }
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.post(
-                    "http://localhost:5000/api/admin/dictionary",
-                    this.currentItem,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await addDictionaryItem(this.currentItem);
                 this.dictionaryItems.push(response.data);
                 this.dictionaryItems.sort((a, b) => a.type.localeCompare(b.type) || a.order - b.order || a.value.localeCompare(b.value));
-                this.fetchExistingTypes(); // 新增成功后刷新类型列表
+                this.fetchExistingTypes();
                 this.resetForm();
-                this.successMessage = "字典项新增成功！";
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "新增字典项失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("新增字典项失败:", err.message);
+                this.error = err.message || "新增字典项失败，请稍后再试。";
             }
         },
         editItem(item) {
             this.isEditing = true;
             this.currentItem = { ...item };
-            // 在编辑模式下，如果当前项的类型不在现有类型中，则显示为"新增类型"
+            this.currentItem._id = item._id;
             if (!this.existingTypes.includes(item.type)) {
                 this.selectedTypeOption = "new_type";
             } else {
@@ -328,16 +300,7 @@ export default {
                 return;
             }
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.put(
-                    `http://localhost:5000/api/admin/dictionary/${this.currentItem._id}`,
-                    this.currentItem,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await updateDictionaryItem(this.currentItem._id, this.currentItem);
                 const index = this.dictionaryItems.findIndex(
                     (item) => item._id === response.data._id
                 );
@@ -345,14 +308,12 @@ export default {
                     this.$set(this.dictionaryItems, index, response.data);
                 }
                 this.dictionaryItems.sort((a, b) => a.type.localeCompare(b.type) || a.order - b.order || a.value.localeCompare(b.value));
-                this.fetchExistingTypes(); // 更新成功后刷新类型列表
+                this.fetchExistingTypes();
                 this.resetForm();
-                this.successMessage = "字典项更新成功！";
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "更新字典项失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("更新字典项失败:", err.message);
+                this.error = err.message || "更新字典项失败，请稍后再试。";
             }
         },
         async deleteItem(id) {
@@ -360,25 +321,15 @@ export default {
                 this.error = null;
                 this.successMessage = null;
                 try {
-                    const token = localStorage.getItem("token");
-                    await axios.delete(
-                        `http://localhost:5000/api/admin/dictionary/${id}`,
-                        {
-                            headers: {
-                                "x-auth-token": token,
-                            },
-                        }
-                    );
+                    const response = await deleteDictionaryItem(id);
                     this.dictionaryItems = this.dictionaryItems.filter(
                         (item) => item._id !== id
                     );
-                    this.fetchExistingTypes(); // 删除成功后刷新类型列表
-                    this.successMessage = "字典项已删除！";
+                    this.fetchExistingTypes();
+                    this.successMessage = response.message;
                 } catch (err) {
-                    this.error =
-                        "删除字典项失败：" +
-                        (err.response ? err.response.data.msg : err.message);
-                    console.error(err);
+                    console.error("删除字典项失败:", err.message);
+                    this.error = err.message || "删除字典项失败，请稍后再试。";
                 }
             }
         },
@@ -388,6 +339,7 @@ export default {
         },
         resetForm() {
             this.currentItem = {
+                _id: null,
                 type: "",
                 value: "",
                 description: "",
@@ -396,7 +348,7 @@ export default {
             this.isEditing = false;
             this.error = null;
             this.successMessage = null;
-            this.selectedTypeOption = ""; // 重置下拉框选择
+            this.selectedTypeOption = "";
         },
     },
 };

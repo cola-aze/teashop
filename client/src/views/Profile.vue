@@ -18,7 +18,7 @@
                         class="relative w-24 h-24 mx-auto mb-2 rounded-full overflow-hidden border-2 border-stone-300"
                     >
                         <img
-                            :src="userProfile.avatar"
+                            :src="displayAvatarUrl"
                             alt="用户头像"
                             class="w-full h-full object-cover"
                         />
@@ -133,19 +133,16 @@
 </template>
 
 <script>
-import axios from "axios"; // 引入 axios
+import { getUserProfile, updateUserInfo, uploadAvatar } from '@/api/user'; // 引入封装好的 API 方法
 import defaultUserAvatar from "@/assets/images/default_user.png"; // 导入默认头像图片
 
 export default {
     name: "Profile",
     data() {
-        const avatarPath = localStorage.getItem("avatar");
         return {
             userProfile: {
                 username: localStorage.getItem("username") || "", // 从 localStorage 获取用户名
-                avatar: avatarPath
-                    ? `http://localhost:5000${avatarPath}`
-                    : defaultUserAvatar,
+                avatar: localStorage.getItem("avatar") || '', // 存储相对路径或空字符串
                 email: "",
                 address: "",
                 phone: "",
@@ -157,13 +154,53 @@ export default {
             phoneError: null,
         };
     },
+    computed: {
+        // 用于显示头像的完整 URL
+        displayAvatarUrl() {
+            if (!this.userProfile.avatar) {
+                return defaultUserAvatar;
+            }
+            // 如果是临时预览 URL (blob: 或 data:)，直接使用
+            if (this.userProfile.avatar.startsWith('blob:') || this.userProfile.avatar.startsWith('data:')) {
+                return this.userProfile.avatar;
+            }
+            // 否则，拼接后端图片服务的基础 URL
+            return `http://localhost:5000${this.userProfile.avatar}`;
+        }
+    },
+    created() {
+        this.fetchProfile();
+    },
     methods: {
+        // 获取用户个人信息
+        async fetchProfile() {
+            try {
+                const response = await getUserProfile();
+                const profileData = response.data; // 统一返回体，实际数据在 data 字段下
+                this.userProfile.username = profileData.username;
+                this.userProfile.email = profileData.email;
+                this.userProfile.address = profileData.address;
+                this.userProfile.phone = profileData.phone;
+                // 更新头像路径，后端返回的是相对路径，这里直接存储
+                this.userProfile.avatar = profileData.avatar || ''; // 存储相对路径
+
+                // 从 localStorage 更新头像，如果存在且有效，但 fetchProfile 已经是最新的了
+                // const storedAvatar = localStorage.getItem("avatar");
+                // if (storedAvatar) {
+                //     this.userProfile.avatar = storedAvatar;
+                // }
+
+            } catch (err) {
+                console.error("获取个人信息失败:", err.message);
+                this.error = err.message || "获取个人信息失败。";
+            }
+        },
         onFileChange(e) {
             const file = e.target.files[0];
             if (file) {
-                // 预览图片（临时）
+                // 预览图片（临时）：生成一个data URL来显示，不实际上传
                 this.userProfile.avatar = URL.createObjectURL(file);
-                // 调用上传头像的方法
+                // 调用上传头像的方法，传递原始文件
                 this.uploadAvatar(file);
             }
         },
@@ -172,42 +209,22 @@ export default {
             this.successMessage = null;
 
             try {
-                const token = localStorage.getItem("token");
-                if (!token) {
-                    this.error = "用户未登录，无法上传头像。";
-                    return;
-                }
-
                 const formData = new FormData();
                 formData.append("avatar", file); // 'avatar' 对应后端 multer 的字段名
 
-                const response = await axios.post(
-                    "http://localhost:5000/api/user/avatar/upload",
-                    formData,
-                    {
-                        headers: {
-                            "Content-Type": "multipart/form-data",
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await uploadAvatar(formData); // 使用封装的 uploadAvatar 方法
 
-                // 更新为后端返回的永久URL，并拼接完整的地址
-                this.userProfile.avatar = `http://localhost:5000${response.data.avatarUrl}`;
+                // 更新为后端返回的永久URL（相对路径），并存储到 localStorage
+                this.userProfile.avatar = response.data.avatarUrl; // response.data 是统一返回体中的 data 字段
                 localStorage.setItem("avatar", response.data.avatarUrl); // 将相对路径存储到 localStorage
-                // this.$bus.$emit("login-success"); // 触发事件，通知App.vue更新头像
-                this.successMessage = "头像上传成功！";
+
+                this.$bus.$emit("login-success"); // 触发事件，通知App.vue更新头像
+                this.successMessage = response.message || "头像上传成功！"; // 统一返回体中的 message
                 console.log("头像上传成功:", response.data);
-                this.fetchProfile(); // 重新获取个人信息，确保页面更新
+                // 不需要重新获取，因为已经通过 avatarUrl 更新了 this.userProfile.avatar
             } catch (err) {
-                console.error(
-                    "头像上传失败:",
-                    err.response ? err.response.data : err.message
-                );
-                this.error =
-                    err.response && err.response.data && err.response.data.msg
-                        ? err.response.data.msg
-                        : "头像上传失败，请稍后再试。";
+                console.error("头像上传失败:", err.message);
+                this.error = err.message || "头像上传失败，请稍后再试。";
             }
         },
         async updateProfile() {
@@ -221,131 +238,57 @@ export default {
             }
 
             try {
-                const token = localStorage.getItem("token");
-                if (!token) {
-                    this.error = "用户未登录，请先登录。";
-                    return;
+                // 如果当前头像是一个临时预览URL (blob: 或 data:)，则不发送，使用localStorage里的相对路径
+                // 否则发送 userProfile.avatar (它应该已经是相对路径)
+                let avatarToSend = this.userProfile.avatar;
+                if (avatarToSend.startsWith('blob:') || avatarToSend.startsWith('data:')) {
+                    avatarToSend = localStorage.getItem('avatar') || ''; // 尝试从localStorage获取上一个相对路径
                 }
 
-                const response = await axios.put(
-                    "http://localhost:5000/api/user/profile",
-                    {
-                        email: this.userProfile.email,
-                        address: this.userProfile.address,
-                        phone: this.userProfile.phone,
-                        avatar: this.userProfile.avatar, // 现在这里发送的是后端返回的永久URL
-                    },
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await updateUserInfo({ // 使用封装的 updateUserInfo 方法
+                    email: this.userProfile.email,
+                    address: this.userProfile.address,
+                    phone: this.userProfile.phone,
+                    avatar: avatarToSend, // 发送相对路径
+                });
 
                 // 更新成功后，用后端返回的最新数据更新本地状态
-                this.userProfile.email = response.data.email;
-                this.userProfile.address = response.data.address;
-                this.userProfile.phone = response.data.phone;
-                // 确保更新后的头像URL也是完整的
-                this.userProfile.avatar = `http://localhost:5000${response.data.avatar}`;
-                localStorage.setItem("avatar", response.data.avatar); // 将相对路径存储到 localStorage
-                this.$bus.$emit("login-success"); // 触发事件，通知App.vue更新头像
+                const updatedProfileData = response.data; // 统一返回体中的 data 字段
+                this.userProfile.email = updatedProfileData.email;
+                this.userProfile.address = updatedProfileData.address;
+                this.userProfile.phone = updatedProfileData.phone;
+                // 更新后的头像也应该是相对路径
+                this.userProfile.avatar = updatedProfileData.avatar || ''; // 存储相对路径
+                localStorage.setItem("avatar", updatedProfileData.avatar); // 更新 localStorage
 
-                this.successMessage = "个人信息保存成功！";
+                this.successMessage = response.message || "个人信息保存成功！";
                 console.log("个人信息更新成功:", response.data);
-                // this.fetchProfile(); // 重新获取个人信息，确保页面更新
             } catch (err) {
-                console.error(
-                    "保存失败:",
-                    err.response ? err.response.data : err.message
-                );
-                this.error =
-                    err.response && err.response.data && err.response.data.msg
-                        ? err.response.data.msg
-                        : "保存个人信息失败，请稍后再试。";
-            }
-        },
-        async fetchProfile() {
-            try {
-                const token = localStorage.getItem("token");
-                if (!token) {
-                    // 如果没有 token，可能是未登录状态，不做处理，等待路由守卫重定向
-                    return;
-                }
-
-                const response = await axios.get(
-                    "http://localhost:5000/api/user/profile",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
-
-                this.userProfile.username = response.data.username; // 确保用户名也被更新
-                this.userProfile.email = response.data.email;
-                this.userProfile.address = response.data.address;
-                this.userProfile.phone = response.data.phone;
-                if (response.data.avatar) {
-                    this.userProfile.avatar = `http://localhost:5000${response.data.avatar}`;
-                    localStorage.setItem("avatar", response.data.avatar); // 将相对路径存储到 localStorage
-                } else {
-                    this.userProfile.avatar = defaultUserAvatar; // 使用默认头像
-                    localStorage.removeItem("avatar"); // 从 localStorage 清除头像
-                }
-                console.log("个人信息加载成功:", response.data);
-            } catch (err) {
-                console.error(
-                    "获取个人信息失败:",
-                    err.response ? err.response.data : err.message
-                );
-                this.error =
-                    err.response && err.response.data && err.response.data.msg
-                        ? err.response.data.msg
-                        : "获取个人信息失败，请稍后再试。";
+                console.error("个人信息更新失败:", err.message);
+                this.error = err.message || "个人信息更新失败，请稍后再试。";
             }
         },
         validateForm() {
+            this.emailError = null;
+            this.addressError = null;
+            this.phoneError = null;
+
             let isValid = true;
 
             // 邮箱验证
-            if (
-                this.userProfile.email &&
-                !/^[\w.-]+@[\w.-]+\.\w+$/.test(this.userProfile.email)
-            ) {
-                this.emailError = "请输入有效的邮箱地址。";
+            if (this.userProfile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.userProfile.email)) {
+                this.emailError = '请输入有效的邮箱地址。';
                 isValid = false;
-            } else {
-                this.emailError = null;
             }
 
-            // 地址验证 (简单非空和长度)
-            if (
-                this.userProfile.address &&
-                this.userProfile.address.length < 5
-            ) {
-                this.addressError = "地址至少包含5个字符。";
+            // 手机号验证 (简单示例，可根据需要调整)
+            if (this.userProfile.phone && !/^1[3-9]\d{9}$/.test(this.userProfile.phone)) {
+                this.phoneError = '请输入有效的11位手机号码。';
                 isValid = false;
-            } else {
-                this.addressError = null;
-            }
-
-            // 手机号验证 (纯数字且长度为11)
-            if (
-                this.userProfile.phone &&
-                !/^\d{11}$/.test(this.userProfile.phone)
-            ) {
-                this.phoneError = "请输入有效的11位手机号码。";
-                isValid = false;
-            } else {
-                this.phoneError = null;
             }
 
             return isValid;
         },
-    },
-    mounted() {
-        this.fetchProfile(); // 页面加载时获取个人信息
     },
 };
 </script>

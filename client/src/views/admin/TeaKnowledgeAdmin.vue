@@ -227,7 +227,7 @@
                     冲泡方法:
                 </label>
                 <quill-editor
-                    v-model:content="currentItem.brewingMethod"
+                    v-model="currentItem.brewingMethod"
                     contentType="html"
                     :options="editorOption"
                     class="shadow appearance-none border rounded w-full text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
@@ -547,7 +547,13 @@
 </template>
 
 <script>
-import axios from "axios";
+import { 
+    getTeaKnowledgeList, 
+    addTeaKnowledge, 
+    updateTeaKnowledge, 
+    deleteTeaKnowledge, 
+    getDictionaryItems 
+} from '@/api/admin';
 import { RegionSelects } from "v-region"; // 导入 RegionSelects 组件
 
 export default {
@@ -565,11 +571,12 @@ export default {
             teaTastes: [],
             teaProductionProcesses: [],
             currentItem: {
+                _id: null, // 新增 _id 字段用于编辑时存储ID
                 category: "",
                 name: "",
                 description_short: "",
                 description_full: "",
-                imageUrl: "",
+                imageUrl: "", // 存储相对路径
                 origin: "", // 修改为字符串，存储级联选择器组合后的文本
                 appearance: "",
                 liquorColor: [],
@@ -631,100 +638,6 @@ export default {
             },
         };
     },
-    watch: {
-        currentItem: {
-            handler(newVal) {
-                // 将数组字段转换回逗号分隔的字符串，以便在 textarea 中显示
-                this.liquorColorInput = newVal.liquorColor
-                    ? newVal.liquorColor.join(", ")
-                    : "";
-                this.infusedLeavesInput = newVal.infusedLeaves
-                    ? newVal.infusedLeaves.join(", ")
-                    : "";
-                this.benefitsInput = newVal.benefits
-                    ? newVal.benefits.join(", ")
-                    : "";
-                this.suitableForInput = newVal.suitableFor
-                    ? newVal.suitableFor.join(", ")
-                    : "";
-                this.notSuitableForInput = newVal.notSuitableFor
-                    ? newVal.notSuitableFor.join(", ")
-                    : "";
-                this.productionProcessInput = newVal.productionProcess
-                    ? newVal.productionProcess.join(", ")
-                    : "";
-                this.shapeInput = newVal.shape ? newVal.shape.join(", ") : "";
-                this.colorInput = newVal.color ? newVal.color.join(", ") : "";
-                this.aromaInput = newVal.aroma ? newVal.aroma.join(", ") : "";
-                this.tasteInput = newVal.taste ? newVal.taste.join(", ") : "";
-
-                // 设置Quill编辑器内容
-                if (newVal.brewingMethod) {
-                    // Quill Editor的v-model绑定会自动处理HTML内容
-                    // 不需要额外手动设置
-                }
-
-                 // 初始化selectedOrigin用于级联选择器
-                if (newVal.origin) {
-                    const originName = String(newVal.origin);
-                    console.log("Processing origin name:", originName);
-
-                    let provinceObj = {};
-                    let cityObj = {};
-                    let areaObj = {};
-
-                    const nameParts = originName.split('-');
-
-                    // 在使用 this.$region 之前，检查它是否已定义
-                    if (this.$region && this.$region.Province) { // 新增检查
-                        // 使用 this.$region 来访问地区数据
-                        const provinceData = this.$region.Province.find(p => p.name === nameParts[0]);
-                        if (provinceData) {
-                            provinceObj = { value: provinceData.value, name: provinceData.name };
-                            if (nameParts[1] && this.$region.City) {
-                                const cityData = this.$region.City.find(c => c.name === nameParts[1] && c.parent === provinceData.value);
-                                if (cityData) {
-                                    cityObj = { value: cityData.value, name: cityData.name };
-                                    if (nameParts[2] && this.$region.Area) {
-                                        const areaData = this.$region.Area.find(a => a.name === nameParts[2] && a.parent === cityData.value);
-                                        if (areaData) {
-                                            areaObj = { value: areaData.value, name: areaData.name };
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        console.warn("this.$region is not yet defined when currentItem watcher runs.");
-                    }
-                    
-                    this.selectedOrigin = {
-                        province: provinceObj,
-                        city: cityObj,
-                        area: areaObj
-                    };
-                    
-                } else {
-                    // Reset to empty objects if no origin
-                    this.selectedOrigin = { province: {}, city: {}, area: {} };
-                }
-
-
-                // 如果存在 imageUrl，则显示预览
-                if (!newVal.imageUrl) {
-                    this.imagePreviewUrl = null; // 清除预览
-                    this.imageFile = null;
-                    const fileInput = document.getElementById("imageUpload");
-                    if (fileInput) {
-                        fileInput.value = "";
-                    }
-                } else if (!this.imageFile) { // 如果有 imageUrl 且没有新文件，则设置预览
-                     this.imagePreviewUrl = this.getAbsoluteImageUrl(newVal.imageUrl);
-                }
-            },
-            deep: true,
-        },
-    },
     mounted() {
         this.fetchTeaKnowledgeItems();
         this.fetchTeaCategories();
@@ -749,6 +662,15 @@ export default {
         },
         getAbsoluteImageUrl(relativePath) {
             if (!relativePath) return "";
+            // 如果已经是完整的 URL (例如 blob: 或 data: 或 http/https)
+            if (
+                relativePath.startsWith("http://") ||
+                relativePath.startsWith("https://") ||
+                relativePath.startsWith("blob:") ||
+                relativePath.startsWith("data:")
+            ) {
+                return relativePath;
+            }
             return `http://localhost:5000${relativePath}`;
         },
         getCategoryDescription(value) {
@@ -757,127 +679,82 @@ export default {
         },
         async fetchTeaCategories() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_category",
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                        },
-                    }
-                );
-                this.teaCategories = response.data;
-            } catch (error) {
-                console.error("Error fetching tea categories:", error);
-                this.error = "获取茶叶类别失败。";
+                const response = await getDictionaryItems({ type: 'tea_category' });
+                this.teaCategories = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶叶类别失败:", err.message);
+                this.error = err.message || "获取茶叶类别失败。";
             }
         },
         async fetchTeaLevels() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_level",
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                        },
-                    }
-                );
-                this.teaLevels = response.data;
-            } catch (error) {
-                console.error("Error fetching tea levels:", error);
-                this.error = "获取茶叶等级失败。";
+                const response = await getDictionaryItems({ type: 'tea_level' });
+                this.teaLevels = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶叶等级失败:", err.message);
+                this.error = err.message || "获取茶叶等级失败。";
             }
         },
         async fetchTeaShapes() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_shape",
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                        },
-                    }
-                );
-                this.teaShapes = response.data;
-            } catch (error) {
-                console.error("Error fetching tea shapes:", error);
-                this.error = "获取茶叶形状失败。";
+                const response = await getDictionaryItems({ type: 'tea_shape' });
+                this.teaShapes = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶叶形状失败:", err.message);
+                this.error = err.message || "获取茶叶形状失败。";
             }
         },
         async fetchTeaColors() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_color",
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                        },
-                    }
-                );
-                this.teaColors = response.data;
-            } catch (error) {
-                console.error("Error fetching tea colors:", error);
-                this.error = "获取茶叶色泽失败。";
+                const response = await getDictionaryItems({ type: 'tea_color' });
+                this.teaColors = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶叶色泽失败:", err.message);
+                this.error = err.message || "获取茶叶色泽失败。";
             }
         },
         async fetchTeaAromas() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_aroma",
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                        },
-                    }
-                );
-                this.teaAromas = response.data;
-            } catch (error) {
-                console.error("Error fetching tea aromas:", error);
-                this.error = "获取茶叶香气失败。";
+                const response = await getDictionaryItems({ type: 'tea_aroma' });
+                this.teaAromas = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶叶香气失败:", err.message);
+                this.error = err.message || "获取茶叶香气失败。";
             }
         },
         async fetchTeaTastes() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_taste",
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                        },
-                    }
-                );
-                this.teaTastes = response.data;
-            } catch (error) {
-                console.error("Error fetching tea tastes:", error);
-                this.error = "获取茶叶滋味失败。";
+                const response = await getDictionaryItems({ type: 'tea_taste' });
+                this.teaTastes = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶叶滋味失败:", err.message);
+                this.error = err.message || "获取茶叶滋味失败。";
             }
         },
         async fetchTeaProductionProcesses() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_production_process",
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                        },
-                    }
-                );
-                this.teaProductionProcesses = response.data;
-            } catch (error) {
-                console.error("Error fetching tea production processes:", error);
-                this.error = "获取茶叶制作工艺失败。";
+                const response = await getDictionaryItems({ type: 'tea_production_process' });
+                this.teaProductionProcesses = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶叶制作工艺失败:", err.message);
+                this.error = err.message || "获取茶叶制作工艺失败。";
             }
         },
         async fetchTeaKnowledgeItems() {
             try {
-                const response = await axios.get("http://localhost:5000/api/admin/tea-knowledge", {
-                    headers: {
-                        "x-auth-token": localStorage.getItem("token"),
-                    },
-                });
-                this.teaKnowledgeItems = response.data;
-            } catch (error) {
-                console.error("Error fetching tea knowledge items:", error);
-                this.error = "获取茶知识列表失败。";
+                const response = await getTeaKnowledgeList();
+                this.teaKnowledgeItems = response.data; // 统一返回体，实际数据在 data 字段下
+                this.successMessage = response.message; // 获取成功消息
+            } catch (err) {
+                console.error("获取茶知识列表失败:", err.message);
+                this.error = err.message || "获取茶知识列表失败。";
             }
         },
         handleFileChange(event) {
@@ -901,13 +778,9 @@ export default {
             }
         },
         async addItem() {
+            this.error = null;
+            this.successMessage = null;
             try {
-                const token = localStorage.getItem("token");
-                if (!token) {
-                    this.error = "未授权，请重新登录。";
-                    return;
-                }
-
                 const formData = new FormData();
 
                 // 统一处理多标签字段，转为JSON字符串或空数组
@@ -945,28 +818,20 @@ export default {
                     formData.append("imageUrl", "");
                 }
 
-                const response = await axios.post(
-                    "http://localhost:5000/api/admin/tea-knowledge",
-                    formData,
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                            "Content-Type": "multipart/form-data",
-                        },
-                    }
-                );
+                const response = await addTeaKnowledge(formData); // 使用封装的 API
 
-                this.successMessage = "茶知识添加成功！";
+                this.successMessage = response.message; // 统一返回体中的 message
                 this.resetForm();
                 this.fetchTeaKnowledgeItems();
-            } catch (error) {
-                console.error("Error adding tea knowledge:", error);
-                this.error = error.response?.data?.message || "添加茶知识失败。";
+            } catch (err) {
+                console.error("新增茶知识失败:", err.message);
+                this.error = err.message || "新增茶知识失败。";
             }
         },
         editItem(item) {
             this.isEditing = true;
             this.currentItem = { ...item };
+            this.currentItem._id = item._id; // 确保_id被复制
 
             // 将数组字段转换回逗号分隔的字符串，以便在 textarea 中显示
             this.liquorColorInput = item.liquorColor ? item.liquorColor.join(", ") : "";
@@ -980,13 +845,12 @@ export default {
             this.aromaInput = item.aroma ? item.aroma.join(", ") : "";
             this.tasteInput = item.taste ? item.taste.join(", ") : "";
 
-
             // 初始化selectedOrigin用于级联选择器
             if (item.origin) {
                 const parts = String(item.origin).split('-');
-                this.selectedOrigin.province = parts[0] ? { value: parts[0] } : {};
-                this.selectedOrigin.city = parts[1] ? { value: parts[1] } : {};
-                this.selectedOrigin.area = parts[2] ? { value: parts[2] } : {};
+                this.selectedOrigin.province = parts[0] ? { value: parts[0], name: '' } : {};
+                this.selectedOrigin.city = parts[1] ? { value: parts[1], name: '' } : {};
+                this.selectedOrigin.area = parts[2] ? { value: parts[2], name: '' } : {};
             } else {
                 this.selectedOrigin = { province: {}, city: {}, area: {} };
             }
@@ -997,15 +861,12 @@ export default {
             if (fileInput) {
                 fileInput.value = "";
             }
+            window.scrollTo({ top: 0, behavior: "smooth" });
         },
         async updateItem() {
+            this.error = null;
+            this.successMessage = null;
             try {
-                const token = localStorage.getItem("token");
-                if (!token) {
-                    this.error = "未授权，请重新登录。";
-                    return;
-                }
-
                 const formData = new FormData();
 
                 const toArrayOrEmpty = (input) => {
@@ -1044,49 +905,34 @@ export default {
                     formData.append("imageUrl", this.currentItem.imageUrl);
                 }
 
-                const response = await axios.put(
-                    `http://localhost:5000/api/admin/tea-knowledge/${this.currentItem._id}`,
-                    formData,
-                    {
-                        headers: {
-                            "x-auth-token": localStorage.getItem("token"),
-                            "Content-Type": "multipart/form-data",
-                        },
-                    }
-                );
+                const response = await updateTeaKnowledge(this.currentItem._id, formData); // 使用封装的 API
 
-                this.successMessage = "茶知识更新成功！";
+                this.successMessage = response.message; // 统一返回体中的 message
                 this.resetForm();
                 this.fetchTeaKnowledgeItems();
-            } catch (error) {
-                console.error("Error updating tea knowledge:", error);
-                this.error = error.response?.data?.message || "更新茶知识失败。";
+            } catch (err) {
+                console.error("更新茶知识失败:", err.message);
+                this.error = err.message || "更新茶知识失败。";
             }
         },
         async deleteItem(id) {
             if (confirm("确定要删除此茶知识吗？")) {
+                this.error = null;
+                this.successMessage = null;
                 try {
-                    const token = localStorage.getItem("token");
-                    if (!token) {
-                        this.error = "未授权，请重新登录。";
-                        return;
-                    }
-                    await axios.delete(`http://localhost:5000/api/admin/tea-knowledge/${id}`, {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    });
-                    this.successMessage = "茶知识删除成功！";
+                    const response = await deleteTeaKnowledge(id); // 使用封装的 API
+                    this.successMessage = response.message; // 统一返回体中的 message
                     this.fetchTeaKnowledgeItems();
-                } catch (error) {
-                    console.error("Error deleting tea knowledge:", error);
-                    this.error = error.response?.data?.message || "删除茶知识失败。";
+                } catch (err) {
+                    console.error("删除茶知识失败:", err.message);
+                    this.error = err.message || "删除茶知识失败。";
                 }
             }
         },
         resetForm() {
             this.isEditing = false;
             this.currentItem = {
+                _id: null,
                 category: "",
                 name: "",
                 description_short: "",
@@ -1109,9 +955,8 @@ export default {
                 taste: "",
                 productionProcess: [],
             };
-            this.successMessage = null;
+            this.imageFile = null;
             this.imagePreviewUrl = null;
-            // 重置辅助输入属性
             this.liquorColorInput = "";
             this.infusedLeavesInput = "";
             this.benefitsInput = "";
@@ -1122,16 +967,13 @@ export default {
             this.colorInput = "";
             this.aromaInput = "";
             this.tasteInput = "";
-            // 重置文件输入框
+            this.selectedOrigin = { province: {}, city: {}, area: {} }; // 重置级联选择器状态
             const fileInput = document.getElementById("imageUpload");
             if (fileInput) {
                 fileInput.value = "";
             }
-            // 重置selectedOrigin
-            this.selectedOrigin = { province: {}, city: {}, area: {} };
-        },
-        searchTeaKnowledge() {
-            // Implement search functionality if needed
+            this.successMessage = null;
+            this.error = null;
         },
     },
 };

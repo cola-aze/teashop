@@ -7,10 +7,10 @@ const path = require("path"); // 引入 path 模块
 
 // 配置 multer 用于文件上传
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
+    destination: function(req, file, cb) {
         cb(null, "public/uploads/avatars"); // 文件上传到 public/uploads/avatars 目录
     },
-    filename: function (req, file, cb) {
+    filename: function(req, file, cb) {
         // 以当前时间戳和原始文件名创建唯一文件名
         cb(
             null,
@@ -24,24 +24,24 @@ const upload = multer({ storage: storage });
 // @route   GET /api/user/profile
 // @desc    获取当前用户的个人信息
 // @access  Private (需要认证)
-router.get("/profile", auth, async (req, res) => {
+router.get("/profile", auth, async(req, res) => {
     try {
         // 从数据库中查找用户，但不返回密码
         const user = await User.findById(req.user.id).select("-password");
         if (!user) {
-            return res.status(404).json({ msg: "用户未找到" });
+            return res.error(404, "用户未找到");
         }
-        res.json(user);
+        res.success(user, "获取用户资料成功");
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("服务器错误");
+        res.error(500, "服务器错误", err.message);
     }
 });
 
 // @route   PUT /api/user/profile
 // @desc    更新当前用户的个人信息
 // @access  Private (需要认证)
-router.put("/profile", auth, async (req, res) => {
+router.put("/profile", auth, async(req, res) => {
     const { email, address, phone, avatar } = req.body;
 
     // 构建用户字段对象
@@ -61,20 +61,17 @@ router.put("/profile", auth, async (req, res) => {
     try {
         let user = await User.findById(req.user.id);
         if (!user) {
-            return res.status(404).json({ msg: "用户未找到" });
+            return res.error(404, "用户未找到");
         }
 
         // 更新用户
-        user = await User.findOneAndUpdate(
-            { _id: req.user.id },
-            { $set: userFields },
-            { new: true } // 返回更新后的文档
+        user = await User.findOneAndUpdate({ _id: req.user.id }, { $set: userFields }, { new: true } // 返回更新后的文档
         ).select("-password"); // 不返回密码
 
-        res.json(user);
+        res.success(user, "更新用户资料成功");
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("服务器错误");
+        res.error(500, "服务器错误", err.message);
     }
 });
 
@@ -85,29 +82,27 @@ router.post(
     "/avatar/upload",
     auth,
     upload.single("avatar"),
-    async (req, res) => {
+    async(req, res) => {
         try {
             if (!req.file) {
-                return res.status(400).json({ msg: "没有文件被上传" });
+                return res.error(400, "没有文件被上传");
             }
 
             const avatarUrl = `/uploads/avatars/${req.file.filename}`;
 
             // 更新用户的头像字段
             const user = await User.findByIdAndUpdate(
-                req.user.id,
-                { avatar: avatarUrl },
-                { new: true }
+                req.user.id, { avatar: avatarUrl }, { new: true }
             ).select("-password");
 
             if (!user) {
-                return res.status(404).json({ msg: "用户未找到" });
+                return res.error(404, "用户未找到");
             }
 
-            res.json({ msg: "头像上传成功", avatarUrl: user.avatar });
+            res.success({ avatarUrl: user.avatar }, "头像上传成功");
         } catch (err) {
             console.error(err.message);
-            res.status(500).send("服务器错误");
+            res.error(500, "服务器错误", err.message);
         }
     }
 );

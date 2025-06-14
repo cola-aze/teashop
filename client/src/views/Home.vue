@@ -169,7 +169,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import { getCarouselItemsPublic, getPosterItemsPublic, getProductsPublic } from '@/api/public';
 
 export default {
     name: "Home",
@@ -243,45 +243,43 @@ export default {
         },
         async fetchCarouselItems() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/carousel"
-                );
+                const response = await getCarouselItemsPublic();
                 this.carouselItems = response.data;
                 if (this.carouselItems.length > 1) {
-                    this.startCarousel();
+                    this.startCarouselAutoPlay();
                 }
-            } catch (error) {
-                console.error("获取轮播图数据失败:", error);
+            } catch (err) {
+                console.error("获取轮播图失败:", err.message);
             }
         },
         async fetchPosters() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/posters"
-                );
+                const response = await getPosterItemsPublic();
                 this.posters = response.data;
-            } catch (error) {
-                console.error("获取海报图数据失败:", error);
+            } catch (err) {
+                console.error("获取海报图失败:", err.message);
             }
         },
         async fetchProducts() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/products"
-                );
+                const response = await getProductsPublic();
                 this.products = response.data;
-            } catch (error) {
-                console.error("获取茶品数据失败:", error);
+            } catch (err) {
+                console.error("获取产品列表失败:", err.message);
             }
         },
-        startCarousel() {
+        startCarouselAutoPlay() {
             this.carouselInterval = setInterval(() => {
-                this.currentCarouselIndex =
-                    (this.currentCarouselIndex + 1) % this.carouselItems.length;
-            }, 5000); // 每5秒切换一次
+                this.currentCarouselIndex = (
+                    this.currentCarouselIndex + 1
+                ) % this.carouselItems.length;
+            }, 5000); // 每 5 秒切换一次
         },
-        stopCarousel() {
-            clearInterval(this.carouselInterval);
+        stopCarouselAutoPlay() {
+            if (this.carouselInterval) {
+                clearInterval(this.carouselInterval);
+                this.carouselInterval = null;
+            }
         },
     },
     created() {
@@ -289,8 +287,8 @@ export default {
         this.fetchPosters();
         this.fetchProducts();
     },
-    beforeDestroy() {
-        this.stopCarousel();
+    beforeUnmount() {
+        this.stopCarouselAutoPlay();
     },
 };
 </script>

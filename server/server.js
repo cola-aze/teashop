@@ -6,6 +6,7 @@ const authRoutes = require("./routes/auth"); // 引入认证路由
 const userRoutes = require("./routes/user"); // 引入用户路由
 const adminRoutes = require("./routes/admin"); // 引入后台管理路由
 const publicRoutes = require("./routes/public"); // 引入公开路由
+const responseHandler = require("./utils/responseHandler"); // 引入统一响应处理中间件
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json()); // 用于解析 JSON 格式的请求体
 app.use(express.static("public")); // 服务静态文件，例如上传的图片
 app.use("/uploads", express.static("uploads")); // 新增：服务上传的图片文件
+app.use(responseHandler); // 使用统一响应处理中间件
 
 mongoose.set('strictQuery', true);
 
@@ -38,12 +40,10 @@ app.use("/api/admin", adminRoutes);
 // 使用公开路由
 app.use("/api", publicRoutes);
 
-// 定义一个简单的路由
-app.get("/", (req, res) => {
-    res.send("茶商城后端 API 运行中！");
-});
-
 // 启动服务器
 app.listen(PORT, () => {
     console.log(`服务器在端口 ${PORT} 运行中`);
+});
+app.get("/", (req, res) => {
+    res.send("茶商城后端 API 运行中！");
 });

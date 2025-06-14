@@ -30,7 +30,7 @@
                     >
                         <router-link :to="`/product/${product._id}`">
                             <img
-                                :src="getImageSrc(product.image_url)"
+                                :src="getImageSrc(product.imageUrl)"
                                 alt="产品图片"
                                 class="w-full h-48 object-cover"
                             />
@@ -59,7 +59,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import { getProductsPublic } from '@/api/public';
 
 export default {
     name: "AllTeas",
@@ -84,7 +84,7 @@ export default {
     },
     filters: {
         truncate(value, length) {
-            if (value.length > length) {
+            if (value && value.length > length) {
                 return value.substring(0, length) + "...";
             } else {
                 return value;
@@ -97,14 +97,12 @@ export default {
     methods: {
         async fetchProducts() {
             try {
-                const response = await axios.get(
-                    "http://localhost:5000/api/products"
-                );
+                const response = await getProductsPublic();
                 this.products = response.data;
                 this.loading = false;
             } catch (err) {
-                console.error("Error fetching products:", err);
-                this.error = "无法加载茶品，请稍后再试。";
+                console.error("获取茶品失败:", err.message);
+                this.error = err.message || "无法加载茶品，请稍后再试。";
                 this.loading = false;
             }
         },
@@ -122,16 +120,14 @@ export default {
             return categoryMap[category] || category;
         },
         getImageSrc(imageUrl) {
+            if (!imageUrl) return "/path/to/default-image.jpg";
             if (
-                imageUrl &&
-                (imageUrl.startsWith("http://") ||
-                    imageUrl.startsWith("https://"))
+                imageUrl.startsWith("http://") ||
+                imageUrl.startsWith("https://")
             ) {
                 return imageUrl;
-            } else if (imageUrl) {
-                return `http://localhost:5000${imageUrl}`;
             } else {
-                return "/path/to/default-image.jpg"; // 默认图片路径
+                return `http://localhost:5000${imageUrl}`;
             }
         },
     },

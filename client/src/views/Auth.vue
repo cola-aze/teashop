@@ -63,7 +63,8 @@
 </template>
 
 <script>
-import axios from "axios";
+// import axios from "axios"; // 移除 axios 导入
+import { login, register } from '@/api/auth'; // 引入封装好的 API 方法
 
 export default {
     name: "Auth",
@@ -94,14 +95,13 @@ export default {
         async handleLogin() {
             try {
                 this.error = null;
-                const response = await axios.post(
-                    "http://localhost:5000/api/auth/login",
-                    {
-                        username: this.username,
-                        password: this.password,
-                    }
-                );
+                // 使用封装的 login 方法
+                const response = await login({
+                    username: this.username,
+                    password: this.password,
+                });
 
+                // 后端统一返回体中，成功数据在 response.data， message 在 response.message
                 const { token, username, avatar, isAdmin } = response.data;
                 localStorage.setItem("token", token);
                 localStorage.setItem("username", username);
@@ -117,27 +117,21 @@ export default {
                 this.$bus.$emit("login-success"); // 触发登录成功事件
                 this.$router.push("/"); // 登录成功后跳转到首页
             } catch (err) {
-                console.error(
-                    "登录失败:",
-                    err.response ? err.response.data : err.message
-                );
-                this.error =
-                    err.response && err.response.data && err.response.data.msg
-                        ? err.response.data.msg
-                        : "登录失败，请检查用户名或密码。";
+                // 错误已由 request.js 统一处理，这里仅用于更新页面错误信息
+                console.error("登录失败:", err.message);
+                this.error = err.message || "登录失败，请检查用户名或密码。";
             }
         },
         async handleRegister() {
             try {
                 this.error = null;
-                const response = await axios.post(
-                    "http://localhost:5000/api/auth/register",
-                    {
-                        username: this.username,
-                        password: this.password,
-                    }
-                );
+                // 使用封装的 register 方法
+                const response = await register({
+                    username: this.username,
+                    password: this.password,
+                });
 
+                // 后端统一返回体中，成功数据在 response.data， message 在 response.message
                 const { token, username, avatar } = response.data;
                 localStorage.setItem("token", token);
                 localStorage.setItem("username", username);
@@ -151,14 +145,9 @@ export default {
                 // 注册成功后可以跳转到登录页面或者直接登录到首页
                 this.$router.push("/"); // 注册成功后直接登录到首页
             } catch (err) {
-                console.error(
-                    "注册失败:",
-                    err.response ? err.response.data : err.message
-                );
-                this.error =
-                    err.response && err.response.data && err.response.data.msg
-                        ? err.response.data.msg
-                        : "注册失败，请稍后再试。";
+                // 错误已由 request.js 统一处理，这里仅用于更新页面错误信息
+                console.error("注册失败:", err.message);
+                this.error = err.message || "注册失败，请稍后再试。";
             }
         },
     },

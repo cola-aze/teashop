@@ -100,7 +100,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import { getUsers, toggleUserAdminStatus } from '@/api/admin';
 
 export default {
     name: "UserAdmin",
@@ -117,21 +117,11 @@ export default {
     methods: {
         async fetchUsers() {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/users",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await getUsers();
                 this.users = response.data;
             } catch (err) {
-                this.error =
-                    "获取用户数据失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("获取用户数据失败:", err.message);
+                this.error = err.message || "获取用户数据失败。";
             }
         },
         async toggleAdminStatus(userId, username) {
@@ -140,29 +130,17 @@ export default {
                 : "设置";
             if (confirm(`确定要${action}用户 ${username} 的管理员权限吗？`)) {
                 try {
-                    const token = localStorage.getItem("token");
-                    const response = await axios.put(
-                        `http://localhost:5000/api/admin/users/${userId}/toggle-admin`,
-                        {},
-                        {
-                            headers: {
-                                "x-auth-token": token,
-                            },
-                        }
-                    );
-                    this.successMessage = response.data.msg;
-                    // 找到更新的用户并在本地更新其 isAdmin 状态
+                    const response = await toggleUserAdminStatus(userId);
+                    this.successMessage = response.message;
                     const index = this.users.findIndex(
                         (user) => user._id === userId
                     );
                     if (index !== -1) {
-                        this.$set(this.users, index, response.data.user);
+                        this.$set(this.users, index, response.data);
                     }
                 } catch (err) {
-                    this.error =
-                        "更新用户权限失败：" +
-                        (err.response ? err.response.data.msg : err.message);
-                    console.error(err);
+                    console.error("更新用户权限失败:", err.message);
+                    this.error = err.message || "更新用户权限失败，请稍后再试。";
                 }
             }
         },

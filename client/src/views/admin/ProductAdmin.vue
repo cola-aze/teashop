@@ -260,7 +260,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import { getProducts, addProduct, updateProduct, deleteProduct, getDictionaryItems } from '@/api/admin';
 
 export default {
     name: "ProductAdmin",
@@ -268,6 +268,7 @@ export default {
         return {
             products: [],
             currentItem: {
+                _id: null,
                 name: "",
                 description: "",
                 price: 0,
@@ -299,64 +300,37 @@ export default {
         },
         async fetchProducts() {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/products",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await getProducts();
                 this.products = response.data.sort((a, b) => {
                     const categoryComparison = a.category.localeCompare(b.category);
                     if (categoryComparison !== 0) return categoryComparison;
                     return a.order - b.order;
                 });
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "获取茶品失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("获取茶品失败:", err.message);
+                this.error = err.message || "获取茶品失败，请稍后再试。";
             }
         },
         async fetchTeaCategories() {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=tea_category",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await getDictionaryItems({ type: 'tea_category' });
                 this.teaCategories = response.data.sort((a, b) => a.order - b.order || a.value.localeCompare(b.value));
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "获取茶类别失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("获取茶类别失败:", err.message);
+                this.error = err.message || "获取茶类别失败，请稍后再试。";
                 this.teaCategories = [];
             }
         },
         async fetchProductLevels() {
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get(
-                    "http://localhost:5000/api/admin/dictionary?type=product_level",
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const response = await getDictionaryItems({ type: 'product_level' });
                 this.productLevels = response.data.sort((a, b) => a.order - b.order || a.value.localeCompare(b.value));
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "获取产品等级失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("获取产品等级失败:", err.message);
+                this.error = err.message || "获取产品等级失败，请稍后再试。";
                 this.productLevels = [];
             }
         },
@@ -364,16 +338,17 @@ export default {
             this.error = null;
             this.successMessage = null;
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.post(
-                    "http://localhost:5000/api/admin/products",
-                    this.currentItem,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const formData = new FormData();
+                formData.append('name', this.currentItem.name);
+                formData.append('description', this.currentItem.description);
+                formData.append('price', this.currentItem.price);
+                formData.append('stock', this.currentItem.stock);
+                formData.append('category', this.currentItem.category);
+                formData.append('order', this.currentItem.order);
+                formData.append('level', this.currentItem.level);
+                formData.append('imageUrl', this.currentItem.imageUrl);
+
+                const response = await addProduct(formData);
                 this.products.push(response.data);
                 this.products.sort((a, b) => {
                     const categoryComparison = a.category.localeCompare(b.category);
@@ -381,12 +356,10 @@ export default {
                     return a.order - b.order;
                 });
                 this.resetForm();
-                this.successMessage = "茶品新增成功！";
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "新增茶品失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("新增茶品失败:", err.message);
+                this.error = err.message || "新增茶品失败，请稍后再试。";
             }
         },
         editItem(product) {
@@ -398,16 +371,17 @@ export default {
             this.error = null;
             this.successMessage = null;
             try {
-                const token = localStorage.getItem("token");
-                const response = await axios.put(
-                    `http://localhost:5000/api/admin/products/${this.currentItem._id}`,
-                    this.currentItem,
-                    {
-                        headers: {
-                            "x-auth-token": token,
-                        },
-                    }
-                );
+                const formData = new FormData();
+                formData.append('name', this.currentItem.name);
+                formData.append('description', this.currentItem.description);
+                formData.append('price', this.currentItem.price);
+                formData.append('stock', this.currentItem.stock);
+                formData.append('category', this.currentItem.category);
+                formData.append('order', this.currentItem.order);
+                formData.append('level', this.currentItem.level);
+                formData.append('imageUrl', this.currentItem.imageUrl);
+
+                const response = await updateProduct(this.currentItem._id, formData);
                 const index = this.products.findIndex(
                     (product) => product._id === response.data._id
                 );
@@ -420,12 +394,10 @@ export default {
                     return a.order - b.order;
                 });
                 this.resetForm();
-                this.successMessage = "茶品更新成功！";
+                this.successMessage = response.message;
             } catch (err) {
-                this.error =
-                    "更新茶品失败：" +
-                    (err.response ? err.response.data.msg : err.message);
-                console.error(err);
+                console.error("更新茶品失败:", err.message);
+                this.error = err.message || "更新茶品失败，请稍后再试。";
             }
         },
         async deleteItem(id) {
@@ -433,24 +405,14 @@ export default {
                 this.error = null;
                 this.successMessage = null;
                 try {
-                    const token = localStorage.getItem("token");
-                    await axios.delete(
-                        `http://localhost:5000/api/admin/products/${id}`,
-                        {
-                            headers: {
-                                "x-auth-token": token,
-                            },
-                        }
-                    );
+                    const response = await deleteProduct(id);
                     this.products = this.products.filter(
                         (product) => product._id !== id
                     );
-                    this.successMessage = "茶品已删除！";
+                    this.successMessage = response.message;
                 } catch (err) {
-                    this.error =
-                        "删除茶品失败：" +
-                        (err.response ? err.response.data.msg : err.message);
-                    console.error(err);
+                    console.error("删除茶品失败:", err.message);
+                    this.error = err.message || "删除茶品失败，请稍后再试。";
                 }
             }
         },
@@ -460,6 +422,7 @@ export default {
         },
         resetForm() {
             this.currentItem = {
+                _id: null,
                 name: "",
                 description: "",
                 price: 0,
