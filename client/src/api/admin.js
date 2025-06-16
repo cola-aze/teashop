@@ -248,8 +248,6 @@ export function getTeaKnowledgeList() {
  * @param {string} data.title - 茶知识标题
  * @param {string} data.category - 茶知识分类
  * @param {string} data.content - 茶知识内容
- * @param {number} data.order - 排序字段
- * @param {File} [data.image] - 茶知识图片文件（可选）
  * @returns {Promise} - 返回一个 Promise 对象，包含新增的茶知识信息
  */
 export function addTeaKnowledge(data) {
@@ -270,9 +268,6 @@ export function addTeaKnowledge(data) {
  * @param {string} data.title - 茶知识标题
  * @param {string} data.category - 茶知识分类
  * @param {string} data.content - 茶知识内容
- * @param {number} data.order - 排序字段
- * @param {File} [data.image] - 新的茶知识图片文件（可选）
- * @param {boolean} [data.removeImage] - 是否移除现有图片（可选，如果为 true，则 imageUrl 设置为 null）
  * @returns {Promise} - 返回一个 Promise 对象，包含更新后的茶知识信息
  */
 export function updateTeaKnowledge(id, data) {
@@ -298,12 +293,13 @@ export function deleteTeaKnowledge(id) {
     });
 }
 
-// 数据字典管理
+
+// 字典管理
 /**
- * @description 获取所有数据字典项列表 (管理员权限)
- * @param {object} params - 查询参数对象
- * @param {string} [params.type] - 字典项类型，用于筛选
- * @returns {Promise} - 返回一个 Promise 对象，包含数据字典项列表数据
+ * @description 获取所有字典项列表 (管理员权限)
+ * @param {object} params - 查询参数
+ * @param {string} [params.type] - 字典类型
+ * @returns {Promise} - 返回一个 Promise 对象，包含字典项列表数据
  */
 export function getDictionaryItems(params) {
     return service({
@@ -314,12 +310,10 @@ export function getDictionaryItems(params) {
 }
 
 /**
- * @description 新增数据字典项 (管理员权限)
- * @param {object} data - 数据字典项数据，包含 name, value, type, order
- * @param {string} data.name - 字典项名称
- * @param {string} data.value - 字典项值
- * @param {string} data.type - 字典项类型
- * @param {number} [data.order] - 排序字段（可选）
+ * @description 新增字典项 (管理员权限)
+ * @param {object} data - 字典项数据，包含 type 和 description
+ * @param {string} data.type - 字典类型
+ * @param {string} data.description - 字典描述
  * @returns {Promise} - 返回一个 Promise 对象，包含新增的字典项信息
  */
 export function addDictionaryItem(data) {
@@ -331,13 +325,11 @@ export function addDictionaryItem(data) {
 }
 
 /**
- * @description 更新数据字典项 (管理员权限)
+ * @description 更新字典项 (管理员权限)
  * @param {string} id - 字典项 ID
- * @param {object} data - 数据字典项更新数据，包含 name, value, type, order
- * @param {string} data.name - 字典项名称
- * @param {string} data.value - 字典项值
- * @param {string} data.type - 字典项类型
- * @param {number} [data.order] - 排序字段（可选）
+ * @param {object} data - 字典项更新数据，包含 type 和 description
+ * @param {string} data.type - 字典类型
+ * @param {string} data.description - 字典描述
  * @returns {Promise} - 返回一个 Promise 对象，包含更新后的字典项信息
  */
 export function updateDictionaryItem(id, data) {
@@ -349,7 +341,7 @@ export function updateDictionaryItem(id, data) {
 }
 
 /**
- * @description 删除指定数据字典项 (管理员权限)
+ * @description 删除指定字典项 (管理员权限)
  * @param {string} id - 字典项 ID
  * @returns {Promise} - 返回一个 Promise 对象，表示删除操作的结果
  */
@@ -361,13 +353,29 @@ export function deleteDictionaryItem(id) {
 }
 
 /**
- * @description 切换用户管理员状态 (管理员权限)
+ * @description 切换用户管理员状态
  * @param {string} id - 用户 ID
- * @returns {Promise} - 返回一个 Promise 对象，表示操作结果
+ * @returns {Promise}
  */
 export function toggleUserAdminStatus(id) {
     return service({
         url: `/admin/users/${id}/toggle-admin`,
-        method: 'patch' // 或者 put，取决于后端设计
+        method: 'put'
+    });
+}
+
+/**
+ * @description 上传富文本编辑器中的图片 (管理员权限)
+ * @param {FormData} formData - 包含图片文件的 FormData 对象
+ * @returns {Promise} - 返回一个 Promise 对象，包含上传结果
+ */
+export function uploadEditorImage(formData) {
+    return service({
+        url: '/admin/upload-editor-image',
+        method: 'post',
+        data: formData,
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
     });
 }

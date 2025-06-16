@@ -316,7 +316,7 @@ export default {
             if (!this.imageFile && !this.currentItem.imageUrl) {
                 this.error = "请选择图片！";
                 return;
-            }
+                }
 
             try {
                 const formData = new FormData();
@@ -350,7 +350,7 @@ export default {
             if (!this.imageFile && !this.currentItem.imageUrl && !this.currentItem.removeImage) {
                 this.error = "请选择图片或确认是否移除旧图片！";
                 return;
-            }
+                }
 
             try {
                 const formData = new FormData();

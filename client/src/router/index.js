@@ -11,14 +11,13 @@ import CarouselAdmin from "../views/admin/CarouselAdmin.vue";
 import PosterAdmin from "../views/admin/PosterAdmin.vue";
 import ProductAdmin from "../views/admin/ProductAdmin.vue";
 import UserAdmin from "../views/admin/UserAdmin.vue";
-import TeaKnowledgeAdmin from "../views/admin/TeaKnowledgeAdmin.vue";
+import TeaKnowledgeAdmin from "../views/admin/TeaknowledgeAdmin/index.vue";
 import TeaKnowledge from "../views/TeaKnowledge.vue";
 import DictionaryAdmin from "../views/admin/DictionaryAdmin.vue"; // 新增：引入数据字典管理组件
 
 Vue.use(VueRouter);
 
-const routes = [
-    {
+const routes = [{
         path: "/",
         name: "Home",
         component: Home,
@@ -65,8 +64,7 @@ const routes = [
         name: "Admin",
         component: AdminDashboard,
         meta: { requiresAuth: true, isAdmin: true }, // 管理员页面需要登录且需要管理员权限
-        children: [
-            {
+        children: [{
                 path: "carousel", // /admin/carousel
                 name: "AdminCarousel",
                 component: CarouselAdmin,

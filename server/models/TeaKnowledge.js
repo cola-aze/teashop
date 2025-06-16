@@ -71,9 +71,6 @@ const TeaKnowledgeSchema = new mongoose.Schema({
         max: 5,
         default: 3
     },
-    shape: { // 形状
-        type: [String] // 数组形式
-    },
     color: { // 色泽 (指干茶色泽)
         type: [String] // 数组形式
     },

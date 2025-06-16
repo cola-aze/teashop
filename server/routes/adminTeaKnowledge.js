@@ -23,7 +23,7 @@ router.post(
             return res.error(400, "验证错误", errors.array());
         }
 
-        const { category, name, description_short, description_full, origin, appearance, liquorColor, infusedLeaves, benefits, brewingMethod, storageMethod, suitableFor, notSuitableFor, productionProcess, referencePrice, grade, shape, color, aroma, taste } = req.body;
+        const { category, name, description_short, description_full, origin, appearance, liquorColor, infusedLeaves, benefits, brewingMethod, storageMethod, suitableFor, notSuitableFor, productionProcess, referencePrice, grade, color, aroma, taste } = req.body;
         const imageUrl = req.file ? `/uploads/tea-knowledge/${req.file.filename}` : null; // 统一使用 imageUrl
 
         if (!imageUrl) {
@@ -49,7 +49,6 @@ router.post(
                 productionProcess: productionProcess ? JSON.parse(productionProcess) : [],
                 referencePrice: parseFloat(referencePrice),
                 grade: parseInt(grade),
-                shape: shape ? JSON.parse(shape) : [],
                 color: color ? JSON.parse(color) : [],
                 aroma: aroma ? JSON.parse(aroma) : [],
                 taste: taste ? JSON.parse(taste) : [],
@@ -98,7 +97,7 @@ router.put(
             return res.error(400, "验证错误", errors.array());
         }
 
-        const { category, name, description_short, description_full, origin, appearance, liquorColor, infusedLeaves, benefits, brewingMethod, storageMethod, suitableFor, notSuitableFor, productionProcess, referencePrice, grade, shape, color, aroma, taste } = req.body;
+        const { category, name, description_short, description_full, origin, appearance, liquorColor, infusedLeaves, benefits, brewingMethod, storageMethod, suitableFor, notSuitableFor, productionProcess, referencePrice, grade, color, aroma, taste } = req.body;
         let imageUrl = req.body.imageUrl; // 获取现有 imageUrl
 
         if (req.file) {
@@ -124,7 +123,6 @@ router.put(
             productionProcess: productionProcess ? JSON.parse(productionProcess) : [],
             referencePrice: parseFloat(referencePrice),
             grade: parseInt(grade),
-            shape: shape ? JSON.parse(shape) : [],
             color: color ? JSON.parse(color) : [],
             aroma: aroma ? JSON.parse(aroma) : [],
             taste: taste ? JSON.parse(taste) : [],
