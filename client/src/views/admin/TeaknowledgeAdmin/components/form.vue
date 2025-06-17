@@ -371,6 +371,7 @@
             冲泡方法:
           </label>
           <quill-editor
+            ref="brewingMethodQuillEditor"
             v-model:content="currentItem.brewingMethod"
             contentType="html"
             :options="brewingMethodEditorOption"
@@ -853,7 +854,7 @@ export default {
             ],
             handlers: {
               // 自定义图片上传处理器
-              image: (data)=>this.imageHandler(data), // 自定义图片处理
+              image: (data)=>this.imageHandler(data,'descriptionFullQuillEditor'), // 自定义图片处理
             },
           },
         },
@@ -863,8 +864,9 @@ export default {
         theme: "snow",
         placeholder: "请输入冲泡方法",
         modules: {
-          toolbar: [
-            ["bold", "italic", "underline", "strike"],
+          toolbar: {
+            container:[
+              ["bold", "italic", "underline", "strike"],
             ["blockquote", "code-block"],
             [{ header: 1 }, { header: 2 }],
             [{ list: "ordered" }, { list: "bullet" }],
@@ -879,6 +881,11 @@ export default {
             ["clean"],
             ["link", "image"], // 保持图片按钮，但会使用 Quill 默认行为，不会触发自定义上传
           ],
+          handlers: {
+              // 自定义图片上传处理器
+              image: (data)=>this.imageHandler(data,'brewingMethodQuillEditor'), // 自定义图片处理
+            },
+          },
         },
       },
       imageFile: null,
@@ -1117,7 +1124,7 @@ export default {
     },
     getAbsoluteImageUrl(relativePath) {
       if (relativePath && !relativePath.startsWith("http")) {
-        return `http://localhost:5000${relativePath.replace(/\\\\/g, "/")}`;
+        return `${process.env.VUE_APP_BACKEND_STATIC_URL}${relativePath.replace(/\\/g, "/")}`;
       }
       return relativePath;
     },
@@ -1220,16 +1227,16 @@ export default {
       this[`${field}InputValue`] = "";
     },
 
-    imageHandler() {
+    imageHandler(data,refName) {
       const input = document.createElement("input");
       input.setAttribute("type", "file");
       input.setAttribute("accept", "image/*");
       input.click();
 
-      input.onchange = async () => {
+      input.onchange =  async() => {
         const file = input.files[0];
         if (file) {
-          const quill = this.$refs.descriptionFullQuillEditor.quill;
+          const quill = this.$refs[refName].quill;
           if (!quill) {
             console.error("Quill editor instance not found.");
             return;
@@ -1240,10 +1247,13 @@ export default {
             console.error("Quill editor selection not found.");
             return;
           }
+          const loadingSpinnerSvg = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZGRkIiBzdHJva2Utd2lkdGg9IjQiPjwvY2lyY2xlPgogIDxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjE4IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWRhc2hhcnJheT0iODAiIHN0cm9rZS1kYXNob2Zmc2V0PSI2MCI+CiAgICA8YW5pbWF0ZVRyYW5zZm9ybSBhdHRyaWJ1dGhlck5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBmcm9tPSIwIDIwIDIwIiB0bz0iMzYwIDIwIDIwIiBkdXJFPSIxcyIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiPjwvYW5pbWF0ZVRyYW5zZm9ybT4KICA8L2NpcmNsZT4KPC9zdmc+`;
+
 
           // 显示占位符或加载提示
-          const imageUrl = "uploading..."; // 临时占位符
-          quill.insertEmbed(range.index, "image", imageUrl, Quill.sources.USER);
+          // const imageUrl = "uploading..."; // 临时占位符
+          // quill.insertEmbed(range.index, "image", imageUrl, Quill.sources.USER);
+          quill.insertEmbed(range.index, "image", loadingSpinnerSvg, Quill.sources.USER);
           quill.setSelection(range.index + 1, Quill.sources.SILENT); // 移动光标
 
           try {
@@ -1269,6 +1279,7 @@ export default {
               quill.deleteText(range.index, 1, Quill.sources.USER); // 上传失败，移除占位符
               this.$message.error("图片上传失败!");
             }
+            
           } catch (error) {
             console.error("图片上传错误:", error);
             quill.deleteText(range.index, 1, Quill.sources.USER); // 错误，移除占位符
