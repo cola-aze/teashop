@@ -143,7 +143,7 @@
                                 <div class="flex item-center justify-center">
                                     <!-- 详情按钮 -->
                                     <button
-                                        @click="showEditModal(item)"
+                                        @click="showDetailModal(item)"
                                         class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline transition duration-300 mr-2"
                                     >
                                         详情
@@ -174,6 +174,8 @@
       <TeaKnowledgeForm
           :visible.sync="showFormModal"
           :initial-data="formEditItem"
+          :disabled="disabled"
+          :title="title"
           @saved="handleFormSaved"
           @close="showFormModal = false"
       ></TeaKnowledgeForm>
@@ -201,6 +203,8 @@ export default {
           error: null,
           showFormModal: false, // 控制弹窗显示
           formEditItem: null,   // 传递给弹窗的数据，null 表示新增，有数据表示编辑
+          disabled:false,
+          title:'',//弹窗标题
       };
   },
   mounted() {
@@ -250,10 +254,20 @@ export default {
       showAddModal() {
           this.formEditItem = null;
           this.showFormModal = true;
+          this.disabled = false;
+          this.title = '新增茶知识'
       },
       showEditModal(item) {
           this.formEditItem = { ...item };
           this.showFormModal = true;
+          this.disabled = false;
+          this.title = '编辑茶知识'
+      },
+      showDetailModal(item) {
+          this.formEditItem = { ...item };
+          this.showFormModal = true;
+          this.disabled = true;
+          this.title = '查看详情'
       },
       async deleteItem(id) {
           if (confirm("确定要删除此茶知识吗？")) {

@@ -15,9 +15,18 @@
         &times;
       </button>
 
-      <form @submit.prevent="isEditing ? updateItem() : addItem()" class="p-4">
+      <form
+        @submit.prevent="
+          title == '新增茶知识'
+            ? addItem()
+            : title == '编辑茶知识'
+            ? updateItem()
+            : closeModal()
+        "
+        class="p-4"
+      >
         <h3 class="text-xl font-semibold mb-4 text-gray-700">
-          {{ isEditing ? "编辑茶知识" : "新增茶知识" }}
+          {{ title }}
         </h3>
         <!-- Removed grid-cols-2 to make each item take a full line -->
         <div class="mb-4">
@@ -32,6 +41,7 @@
             v-model="currentItem.category"
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             required
+            :disabled="disabled"
           >
             <option value="" disabled>请选择类别</option>
             <option
@@ -54,6 +64,7 @@
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             placeholder="请输入茶名称"
             required
+            :disabled="disabled"
           />
         </div>
         <div class="mb-4">
@@ -69,6 +80,7 @@
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500 h-24"
             placeholder="请输入简短描述 (用于列表页卡片)"
             required
+            :disabled="disabled"
           ></textarea>
         </div>
         <div class="mb-4">
@@ -85,10 +97,25 @@
             :options="descriptionFullEditorOption"
             class="shadow appearance-none border rounded w-full text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             placeholder="请输入完整的茶知识详情，支持 Markdown 格式"
+            :disabled="disabled"
+            required
           ></quill-editor>
+
+          <div
+            v-if="description_full_error"
+            class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 mx-4"
+            role="alert"
+          >
+            <span class="block sm:inline">{{ description_full_error}}</span>
+            <span
+              @click="description_full_error = null"
+              class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer"
+              >×</span
+            >
+          </div>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-4" v-if="!disabled">
           <label
             for="imageUpload"
             class="block text-gray-700 text-sm font-bold mb-2"
@@ -101,7 +128,7 @@
             @change="handleFileChange"
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             accept="image/*"
-            :required="!currentItem.imageUrl && !imagePreviewUrl && !isEditing"
+            :required="!currentItem.imageUrl && !imagePreviewUrl"
           />
         </div>
 
@@ -119,6 +146,7 @@
               class="w-32 h-auto object-cover rounded-md border border-gray-300"
             />
             <button
+              v-if="!disabled"
               type="button"
               @click="removeImage"
               class="ml-4 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition duration-300 text-sm"
@@ -139,7 +167,21 @@
             v-model="selectedOrigin"
             @change="handleRegionChange"
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
+            :disabled="disabled"
           ></region-selects>
+          
+          <div
+            v-if="selectedOrigin_error"
+            class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 mx-4"
+            role="alert"
+          >
+            <span class="block sm:inline">{{ selectedOrigin_error}}</span>
+            <span
+              @click="selectedOrigin_error = null"
+              class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer"
+              >×</span
+            >
+          </div>
         </div>
 
         <!-- Start of multi-tag fields -->
@@ -158,6 +200,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('appearance', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -188,7 +231,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!appearanceInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('appearance')"
@@ -213,6 +256,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('liquorColor', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -243,7 +287,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!liquorColorInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('liquorColor')"
@@ -268,6 +312,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('infusedLeaves', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -298,7 +343,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!infusedLeavesInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('infusedLeaves')"
@@ -323,6 +368,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('benefits', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -353,7 +399,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!benefitsInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('benefits')"
@@ -377,6 +423,7 @@
             :options="brewingMethodEditorOption"
             class="shadow appearance-none border rounded w-full text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             placeholder="请输入冲泡方法"
+            :disabled="disabled"
           ></quill-editor>
         </div>
         <div class="mb-4">
@@ -392,6 +439,7 @@
             v-model="currentItem.storageMethod"
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             placeholder="请输入存储方法"
+            :disabled="disabled"
           />
         </div>
 
@@ -410,6 +458,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('suitableFor', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -440,7 +489,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!suitableForInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('suitableFor')"
@@ -465,6 +514,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('notSuitableFor', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -495,7 +545,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!notSuitableForInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('notSuitableFor')"
@@ -518,6 +568,8 @@
             v-model.number="currentItem.referencePrice"
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             placeholder="请输入参考价格"
+            required
+            :disabled="disabled"
           />
         </div>
         <div class="mb-4">
@@ -532,6 +584,8 @@
             max="5"
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
             placeholder="请输入等级 (1-5)"
+            :disabled="disabled"
+            required
           />
         </div>
 
@@ -547,6 +601,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('color', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -577,7 +632,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!colorInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('color')"
@@ -599,6 +654,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('aroma', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -629,7 +685,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!aromaInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('aroma')"
@@ -651,6 +707,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('taste', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -681,7 +738,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!tasteInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('taste')"
@@ -706,6 +763,7 @@
             >
               {{ tag }}
               <button
+                v-if="!disabled"
                 type="button"
                 @click="handleClose('productionProcess', tag)"
                 class="ml-1 -mr-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-blue-400 hover:bg-blue-200 hover:text-blue-500 focus:outline-none focus:bg-blue-200"
@@ -736,7 +794,7 @@
               placeholder="添加标签"
             />
             <button
-              v-else
+              v-else-if="!productionProcessInputVisible && !disabled"
               type="button"
               class="button-new-tag bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded inline-flex items-center"
               @click="showInput('productionProcess')"
@@ -752,7 +810,7 @@
             type="submit"
             class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
           >
-            {{ isEditing ? "更新茶知识" : "新增茶知识" }}
+            {{ title }}
           </button>
           <button
             type="button"
@@ -772,12 +830,11 @@ import {
   addTeaKnowledge,
   updateTeaKnowledge,
   getDictionaryItems,
-  uploadEditorImage
+  uploadEditorImage,
 } from "@/api/admin";
 import { RegionSelects } from "v-region";
-import Quill from 'quill';
+import Quill from "quill";
 console.log(Quill.sources);
-
 
 // QuillEditor is assumed to be globally registered in main.js, so no local import needed unless desired
 // import { QuillEditor } from "@vueup/vue-quill"; // Explicitly import QuillEditor
@@ -797,6 +854,14 @@ export default {
     initialData: {
       type: Object,
       default: null,
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    title: {
+      type: String,
+      default: "",
     },
   },
   data() {
@@ -824,7 +889,7 @@ export default {
         suitableFor: [],
         notSuitableFor: [],
         referencePrice: null,
-        grade: null,
+        grade:  null,
         color: [],
         aroma: [],
         taste: [],
@@ -854,7 +919,8 @@ export default {
             ],
             handlers: {
               // 自定义图片上传处理器
-              image: (data)=>this.imageHandler(data,'descriptionFullQuillEditor'), // 自定义图片处理
+              image: (data) =>
+                this.imageHandler(data, "descriptionFullQuillEditor"), // 自定义图片处理
             },
           },
         },
@@ -865,32 +931,32 @@ export default {
         placeholder: "请输入冲泡方法",
         modules: {
           toolbar: {
-            container:[
+            container: [
               ["bold", "italic", "underline", "strike"],
-            ["blockquote", "code-block"],
-            [{ header: 1 }, { header: 2 }],
-            [{ list: "ordered" }, { list: "bullet" }],
-            [{ script: "sub" }, { script: "super" }],
-            [{ indent: "-1" }, { indent: "+1" }],
-            [{ direction: "rtl" }],
-            [{ size: ["small", false, "large", "huge"] }],
-            [{ header: [1, 2, 3, 4, 5, 6, false] }],
-            [{ color: [] }, { background: [] }],
-            [{ font: [] }],
-            [{ align: [] }],
-            ["clean"],
-            ["link", "image"], // 保持图片按钮，但会使用 Quill 默认行为，不会触发自定义上传
-          ],
-          handlers: {
+              ["blockquote", "code-block"],
+              [{ header: 1 }, { header: 2 }],
+              [{ list: "ordered" }, { list: "bullet" }],
+              [{ script: "sub" }, { script: "super" }],
+              [{ indent: "-1" }, { indent: "+1" }],
+              [{ direction: "rtl" }],
+              [{ size: ["small", false, "large", "huge"] }],
+              [{ header: [1, 2, 3, 4, 5, 6, false] }],
+              [{ color: [] }, { background: [] }],
+              [{ font: [] }],
+              [{ align: [] }],
+              ["clean"],
+              ["link", "image"], // 保持图片按钮，但会使用 Quill 默认行为，不会触发自定义上传
+            ],
+            handlers: {
               // 自定义图片上传处理器
-              image: (data)=>this.imageHandler(data,'brewingMethodQuillEditor'), // 自定义图片处理
+              image: (data) =>
+                this.imageHandler(data, "brewingMethodQuillEditor"), // 自定义图片处理
             },
           },
         },
       },
       imageFile: null,
       imagePreviewUrl: null,
-      isEditing: false,
 
       // Multi-tag related data properties
       appearanceTags: [],
@@ -938,6 +1004,8 @@ export default {
         city: {},
         area: {},
       },
+      selectedOrigin_error:"",
+      description_full_error:''
     };
   },
   watch: {
@@ -949,10 +1017,8 @@ export default {
     initialData: {
       handler(newVal) {
         if (newVal) {
-          this.isEditing = true;
           this.populateForm(newVal);
         } else {
-          this.isEditing = false;
           this.resetFormState();
         }
       },
@@ -970,10 +1036,8 @@ export default {
   methods: {
     initializeForm() {
       if (this.initialData) {
-        this.isEditing = true;
         this.populateForm(this.initialData);
       } else {
-        this.isEditing = false;
         this.resetFormState();
       }
     },
@@ -1053,7 +1117,7 @@ export default {
         suitableFor: [],
         notSuitableFor: [],
         referencePrice: null,
-        grade: null,
+        grade:  null,
         color: [],
         aroma: [],
         taste: [],
@@ -1124,7 +1188,10 @@ export default {
     },
     getAbsoluteImageUrl(relativePath) {
       if (relativePath && !relativePath.startsWith("http")) {
-        return `${process.env.VUE_APP_BACKEND_STATIC_URL}${relativePath.replace(/\\/g, "/")}`;
+        return `${process.env.VUE_APP_BACKEND_STATIC_URL}${relativePath.replace(
+          /\\/g,
+          "/"
+        )}`;
       }
       return relativePath;
     },
@@ -1227,13 +1294,13 @@ export default {
       this[`${field}InputValue`] = "";
     },
 
-    imageHandler(data,refName) {
+    imageHandler(data, refName) {
       const input = document.createElement("input");
       input.setAttribute("type", "file");
       input.setAttribute("accept", "image/*");
       input.click();
 
-      input.onchange =  async() => {
+      input.onchange = async () => {
         const file = input.files[0];
         if (file) {
           const quill = this.$refs[refName].quill;
@@ -1249,11 +1316,15 @@ export default {
           }
           const loadingSpinnerSvg = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZGRkIiBzdHJva2Utd2lkdGg9IjQiPjwvY2lyY2xlPgogIDxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjE4IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWRhc2hhcnJheT0iODAiIHN0cm9rZS1kYXNob2Zmc2V0PSI2MCI+CiAgICA8YW5pbWF0ZVRyYW5zZm9ybSBhdHRyaWJ1dGhlck5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBmcm9tPSIwIDIwIDIwIiB0bz0iMzYwIDIwIDIwIiBkdXJFPSIxcyIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiPjwvYW5pbWF0ZVRyYW5zZm9ybT4KICA8L2NpcmNsZT4KPC9zdmc+`;
 
-
           // 显示占位符或加载提示
           // const imageUrl = "uploading..."; // 临时占位符
           // quill.insertEmbed(range.index, "image", imageUrl, Quill.sources.USER);
-          quill.insertEmbed(range.index, "image", loadingSpinnerSvg, Quill.sources.USER);
+          quill.insertEmbed(
+            range.index,
+            "image",
+            loadingSpinnerSvg,
+            Quill.sources.USER
+          );
           quill.setSelection(range.index + 1, Quill.sources.SILENT); // 移动光标
 
           try {
@@ -1265,7 +1336,7 @@ export default {
               // 关键改动：在这里将相对路径转换为绝对路径
               const newImageUrl = this.getAbsoluteImageUrl(response.data.url);
               console.log(newImageUrl);
-              
+
               // 替换占位符为实际图片URL
               quill.deleteText(range.index, 1, Quill.sources.USER); // 删除占位符
               quill.insertEmbed(
@@ -1279,7 +1350,6 @@ export default {
               quill.deleteText(range.index, 1, Quill.sources.USER); // 上传失败，移除占位符
               this.$message.error("图片上传失败!");
             }
-            
           } catch (error) {
             console.error("图片上传错误:", error);
             quill.deleteText(range.index, 1, Quill.sources.USER); // 错误，移除占位符
@@ -1298,7 +1368,12 @@ export default {
           "description_short",
           this.currentItem.description_short
         );
+        
+        if (!this.currentItem.description_full)
+        return this.description_full_error = "完整茶知识内容是必需的";
         formData.append("description_full", this.currentItem.description_full);
+        if (!this.currentItem.origin)
+        return this.selectedOrigin_error = "产地是必需的";
         formData.append("origin", this.currentItem.origin);
         formData.append("appearance", JSON.stringify(this.appearanceTags));
         formData.append("liquorColor", JSON.stringify(this.liquorColorTags));
@@ -1340,8 +1415,12 @@ export default {
       } catch (err) {
         console.error("新增茶知识失败:", err.message);
         this.$emit("error", err.message || "新增茶知识失败。");
-      } finally {
-        this.closeModal();
+      } 
+      finally {
+        if(!this.description_full_error && !this.selectedOrigin_error){
+          this.closeModal();
+        }
+        
       }
     },
     async updateItem() {
@@ -1354,7 +1433,11 @@ export default {
           "description_short",
           this.currentItem.description_short
         );
+        if (!this.currentItem.description_full)
+        return this.description_full_error = "完整茶知识内容是必需的";
         formData.append("description_full", this.currentItem.description_full);
+        if (!this.currentItem.origin)
+        return this.selectedOrigin_error = "产地是必需的";
         formData.append("origin", this.currentItem.origin);
         formData.append("appearance", JSON.stringify(this.appearanceTags));
         formData.append("liquorColor", JSON.stringify(this.liquorColorTags));
@@ -1378,7 +1461,7 @@ export default {
           "referencePrice",
           this.currentItem.referencePrice || ""
         );
-        formData.append("grade", this.currentItem.grade || 0);
+        formData.append("grade", this.currentItem.grade ||  0);
         formData.append("color", JSON.stringify(this.colorTags));
         formData.append("aroma", JSON.stringify(this.aromaTags));
         formData.append("taste", JSON.stringify(this.tasteTags));
@@ -1400,7 +1483,9 @@ export default {
         console.error("更新茶知识失败:", err.message);
         this.$emit("error", err.message || "更新茶知识失败。");
       } finally {
-        this.closeModal();
+        if(!this.description_full_error && !this.selectedOrigin_error){
+          this.closeModal();
+        }
       }
     },
   },

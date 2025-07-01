@@ -379,3 +379,73 @@ export function uploadEditorImage(formData) {
         }
     });
 }
+
+// 优选分类管理
+/**
+ * @description 获取所有优选分类列表 (管理员权限)
+ * @returns {Promise} - 返回一个 Promise 对象，包含优选分类列表数据
+ */
+export function getFeaturedCategories() {
+    return service({
+        url: '/admin/featured-categories',
+        method: 'get'
+    });
+}
+
+/**
+ * @description 新增优选分类 (管理员权限)
+ * @param {FormData} data - 优选分类数据，包含 name, description, link 和 images 文件数组
+ * @returns {Promise} - 返回一个 Promise 对象，包含新增的优选分类信息
+ */
+export function addFeaturedCategory(data) {
+    return service({
+        url: '/admin/featured-categories',
+        method: 'post',
+        data,
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
+/**
+ * @description 更新优选分类 (管理员权限)
+ * @param {string} id - 优选分类 ID
+ * @param {FormData} data - 优选分类更新数据，包含 name, description, link, 可选的 images 文件数组和 retainedImageUrls 数组
+ * @returns {Promise} - 返回一个 Promise 对象，包含更新后的优选分类信息
+ */
+export function updateFeaturedCategory(id, data) {
+    return service({
+        url: `/admin/featured-categories/${id}`,
+        method: 'put',
+        data,
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
+/**
+ * @description 更新优选分类的排序 (管理员权限)
+ * @param {Array<string>} orderedIds - 优选分类ID的有序数组
+ * @returns {Promise} - 返回一个 Promise 对象，表示排序操作的结果
+ */
+export function reorderFeaturedCategories(orderedIds) {
+    return service({
+        url: '/admin/featured-categories/reorder',
+        method: 'put',
+        data: { orderedIds }
+    });
+}
+
+/**
+ * @description 删除指定优选分类 (管理员权限)
+ * @param {string} id - 优选分类 ID
+ * @returns {Promise} - 返回一个 Promise 对象，表示删除操作的结果
+ */
+export function deleteFeaturedCategory(id) {
+    return service({
+        url: `/admin/featured-categories/${id}`,
+        method: 'delete'
+    });
+}

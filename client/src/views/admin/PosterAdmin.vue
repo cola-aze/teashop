@@ -32,8 +32,20 @@
             >
         </div>
 
+        <!-- 新增海报图按钮 -->
+        <div class="p-4 mb-4">
+            <button
+                @click="showAddForm"
+                v-if="!showForm"
+                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
+            >
+                新增海报图
+            </button>
+        </div>
+
         <!-- 新增/编辑海报图表单 -->
         <form
+            v-if="showForm"
             @submit.prevent="isEditing ? updateItem() : addItem()"
             class="mb-8 p-4 border border-gray-200 rounded-lg bg-white shadow-md"
         >
@@ -163,10 +175,9 @@
                 <button
                     type="button"
                     @click="cancelEdit"
-                    v-if="isEditing"
                     class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
                 >
-                    取消
+                    关闭
                 </button>
             </div>
         </form>
@@ -248,24 +259,29 @@ export default {
         return {
             posterItems: [],
             currentItem: {
-                _id: null, // 新增 _id 字段用于编辑时存储ID
-                imageUrl: "", // 存储相对路径
+                _id: null,
+                imageUrl: "",
                 title: "",
                 linkUrl: "",
                 order: 0,
             },
             isEditing: false,
-            error: null,
+            imageFile: null,
+            imagePreviewUrl: null,
             successMessage: null,
-            imageFile: null, // 用于存储待上传的图片文件
-            imagePreviewUrl: null, // 用于显示本地选择的图片预览
-            linkType: "internal", // 默认为内部链接
+            error: null,
+            linkType: "internal", // 默认链接类型
+            showForm: false, // 控制表单显示与隐藏
         };
     },
     mounted() {
         this.fetchPosterItems();
     },
     methods: {
+        showAddForm() {
+            this.showForm = true;
+            this.cancelEdit(); // 确保表单是清空的
+        },
         handleFileChange(event) {
             const file = event.target.files[0];
             if (file) {
@@ -431,8 +447,20 @@ export default {
             }
         },
         cancelEdit() {
-            this.resetForm();
             this.isEditing = false;
+            this.currentItem = {
+                _id: null,
+                imageUrl: "",
+                title: "",
+                linkUrl: "",
+                order: 0,
+            };
+            this.imageFile = null;
+            this.imagePreviewUrl = null;
+            this.linkType = "internal";
+            this.successMessage = null;
+            this.error = null;
+            this.showForm = false; // 隐藏表单
         },
         resetForm() {
             this.currentItem = {

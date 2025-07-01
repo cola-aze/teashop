@@ -47,7 +47,7 @@ service.interceptors.response.use(
                 // 简单处理：提示并清空 token (如果需要跳转登录，可以在这里加上 router.push('/login'))
                 alert('您的登录已过期或未授权，请重新登录。');
                 localStorage.removeItem('token'); // 清除无效 token
-                // window.location.href = '/login'; // 根据您的路由配置跳转到登录页
+                window.location.href = '/login'; // 根据您的路由配置跳转到登录页
             }
             return Promise.reject(new Error(res.message || 'Error'));
         } else {
@@ -57,7 +57,16 @@ service.interceptors.response.use(
     error => {
         console.error('请求错误:', error);
         let message = error.message;
-        if (error.response && error.response.data) {
+        // 检查后端是否返回了 401 状态码 (通常表示未授权或 token 过期)
+        if (error.response && error.response.status === 401) {
+            message = error.response.data.msg || '您的登录已过期或未授权，请重新登录。';
+            alert(message);
+            localStorage.removeItem('token'); // 清除无效 token
+            // 跳转到登录页面，这里假设登录页面的路由是 /auth
+            // 如果你的登录页面路由不是 /auth，请相应修改
+            window.location.href = '/auth';
+            return Promise.reject(new Error(message));
+        } else if (error.response && error.response.data) {
             message = error.response.data.message || error.response.data.msg || message;
         }
 

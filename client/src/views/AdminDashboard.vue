@@ -147,6 +147,27 @@
                             <span v-if="!isSidebarCollapsed">数据字典管理</span>
                         </router-link>
                     </li>
+                    <li class="mb-3">
+                        <!-- 新增：优选分类管理菜单项 -->
+                        <router-link
+                            to="/admin/featured-category"
+                            :class="[
+                                isSidebarCollapsed
+                                    ? 'justify-center pointer-events-none opacity-50'
+                                    : 'justify-start',
+                                isSidebarCollapsed
+                                    ? 'hover:bg-transparent'
+                                    : 'hover:bg-gray-700',
+                            ]"
+                            class="flex items-center py-2 px-4 rounded hover:bg-gray-700 transition duration-300"
+                        >
+                            <i
+                                class="fas fa-th-large mr-3"
+                                :class="{ 'mr-0': isSidebarCollapsed }"
+                            ></i>
+                            <span v-if="!isSidebarCollapsed">优选分类管理</span>
+                        </router-link>
+                    </li>
                     <!-- 更多管理项可以添加在这里 -->
                 </ul>
             </nav>

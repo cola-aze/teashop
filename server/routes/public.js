@@ -5,6 +5,7 @@ const Poster = require("../models/Poster");
 const Product = require("../models/Product");
 const TeaKnowledge = require("../models/TeaKnowledge");
 const DictionaryItem = require("../models/DictionaryItem");
+const FeaturedCategory = require("../models/FeaturedCategory");
 
 // @route   GET /api/carousel
 // @desc    获取所有轮播图项 (公开，无需认证)
@@ -67,6 +68,19 @@ router.get("/dictionary", async(req, res) => {
         const query = type ? { type } : {};
         const items = await DictionaryItem.find(query).sort({ order: 1, value: 1 });
         res.success(items, "获取字典项列表成功");
+    } catch (err) {
+        console.error(err.message);
+        res.error(500, "服务器错误", err.message);
+    }
+});
+
+// @route   GET /api/public/featured-categories
+// @desc    获取所有优选分类项 (公开，无需认证)
+// @access  Public
+router.get("/featured-categories", async(req, res) => {
+    try {
+        const items = await FeaturedCategory.find();
+        res.success(items, "获取优选分类列表成功");
     } catch (err) {
         console.error(err.message);
         res.error(500, "服务器错误", err.message);

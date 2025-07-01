@@ -14,6 +14,7 @@ import UserAdmin from "../views/admin/UserAdmin.vue";
 import TeaKnowledgeAdmin from "../views/admin/TeaknowledgeAdmin/index.vue";
 import TeaKnowledge from "../views/TeaKnowledge.vue";
 import DictionaryAdmin from "../views/admin/DictionaryAdmin.vue"; // 新增：引入数据字典管理组件
+import FeaturedCategoryAdmin from "../views/admin/FeaturedCategoryAdmin.vue"; // 新增：引入优选分类管理组件
 
 Vue.use(VueRouter);
 
@@ -100,6 +101,12 @@ const routes = [{
                 component: DictionaryAdmin,
                 meta: { requiresAuth: true, isAdmin: true },
             },
+            {
+                path: "featured-category", // 新增：/admin/featured-category
+                name: "AdminFeaturedCategory",
+                component: FeaturedCategoryAdmin,
+                meta: { requiresAuth: true, isAdmin: true },
+            },
         ],
     },
 ];
@@ -123,7 +130,10 @@ router.beforeEach((to, from, next) => {
         });
     } else if (to.name === "Auth" && loggedIn) {
         // 如果用户已登录，但尝试访问认证页面，则重定向到首页
-        next({ path: "/" });
+        next({
+            path: "/",
+            query: { mode: "login" },
+        });
     } else if (to.matched.some((record) => record.meta.isAdmin) && !isAdmin) {
         // 如果路由需要管理员权限，但用户不是管理员，则重定向到首页或显示无权访问信息
         alert("您无权访问此页面。"); // 可以替换为更友好的提示或跳转到错误页面

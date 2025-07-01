@@ -15,6 +15,8 @@ const storage = multer.diskStorage({
             uploadPath += 'products/';
         } else if (req.originalUrl.includes('/api/admin/tea-knowledge')) {
             uploadPath += 'tea-knowledge/';
+        } else if (req.originalUrl.includes('/api/admin/featured-categories')) { // 新增：处理优选分类图片上传
+            uploadPath += 'featured-categories/';
         } else if (req.originalUrl.includes('/upload-editor-image')) { // 新增：处理 Quill 编辑器图片上传
             uploadPath += 'tea-knowledge/';
         } else {

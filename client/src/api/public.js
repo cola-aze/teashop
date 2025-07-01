@@ -56,3 +56,14 @@ export function getDictionaryItemsPublic(params) {
         params
     });
 }
+
+/**
+ * @description 获取所有优选分类项 (公开，无需认证)
+ * @returns {Promise} - 返回一个 Promise 对象，包含优选分类列表数据
+ */
+export function getFeaturedCategoriesPublic() {
+    return service({
+        url: '/featured-categories',
+        method: 'get'
+    });
+}
