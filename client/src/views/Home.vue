@@ -45,8 +45,7 @@
         <div
           v-if="carouselItems.length > 0"
           class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-8 text-white z-10"
-        >
-        </div>
+        ></div>
         <!-- 轮播指示器 -->
         <div
           v-if="carouselItems.length > 1"
@@ -104,9 +103,11 @@
     </section>
 
     <!-- 四宫格组件 -->
-    <FourGridSection />
+    <FourGridSection :featuredCategories="featuredCategories" />
 
     <!-- 优选分类区域 -->
+    <!-- 这部分将被 FourGridSection 组件替代，因此不再需要 -->
+    <!--
     <section class="featured-categories-section mb-10">
       <h2
         class="text-3xl font-bold text-gray-800 mb-6 text-center font-noto-serif-sc"
@@ -132,8 +133,7 @@
               <h3 class="font-bold text-lg mb-2 font-noto-serif-sc">
                 {{ category.name }}
               </h3>
-              <!-- 可以根据需要添加更多详情，比如描述 -->
-            </div>
+              </div>
           </a>
         </div>
         <div
@@ -144,6 +144,7 @@
         </div>
       </div>
     </section>
+    -->
 
     <!-- Tab 栏目切换卡片列表区域 -->
     <section class="tabs-section">
@@ -152,7 +153,9 @@
       >
         精选茗茶
       </h2>
-      <div class="flex flex-nowrap mb-6 border-b border-gray-200 overflow-x-auto" >
+      <div
+        class="flex flex-nowrap mb-6 border-b border-gray-200 overflow-x-auto"
+      >
         <button
           v-for="cat in categories"
           :key="cat.value"
@@ -209,7 +212,7 @@ import {
   getProductsPublic,
   getFeaturedCategoriesPublic,
 } from "@/api/public";
-import FourGridSection from '@/components/FourGridSection.vue';
+import FourGridSection from "@/components/FourGridSection.vue";
 
 export default {
   name: "Home",
@@ -222,7 +225,7 @@ export default {
       carouselItems: [],
       posters: [],
       products: [],
-      featuredCategories: [],
+      featuredCategories: [], // 添加 featuredCategories 属性
       currentCarouselIndex: 0, // 当前轮播图索引
       carouselInterval: null, // 轮播图自动播放的定时器
       touchStartX: 0, // 触摸开始的X坐标
@@ -356,7 +359,9 @@ export default {
     async fetchFeaturedCategories() {
       try {
         const response = await getFeaturedCategoriesPublic();
-        this.featuredCategories = response.data;
+        if (response.code === 200) {
+          this.featuredCategories = response.data.slice(0, 4);
+        }
       } catch (error) {
         console.error("获取优选分类失败:", error);
       }
