@@ -2,11 +2,6 @@
   <div class="home-container w-full max-w-screen-xl mx-auto py-8 px-4">
     <!-- 轮播图区域 -->
     <section class="carousel-section mb-10">
-      <h2
-        class="text-3xl font-bold text-gray-800 mb-6 text-center font-noto-serif-sc"
-      >
-        茶之韵：品味东方
-      </h2>
       <div
         class="relative w-full overflow-hidden rounded-lg shadow-lg"
         style="height: 400px"
@@ -105,54 +100,9 @@
     <!-- 四宫格组件 -->
     <FourGridSection :featuredCategories="featuredCategories" />
 
-    <!-- 优选分类区域 -->
-    <!-- 这部分将被 FourGridSection 组件替代，因此不再需要 -->
-    <!--
-    <section class="featured-categories-section mb-10">
-      <h2
-        class="text-3xl font-bold text-gray-800 mb-6 text-center font-noto-serif-sc"
-      >
-        优选分类
-      </h2>
-      <div
-        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-      >
-        <div
-          v-for="category in featuredCategories"
-          :key="category._id"
-          class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-        >
-          <a :href="category.link" target="_blank" class="block">
-            <img
-              v-if="category.imageUrls && category.imageUrls.length > 0"
-              :src="getAbsoluteImageUrl(category.imageUrls[0])"
-              :alt="category.name"
-              class="w-full h-48 object-cover"
-            />
-            <div class="p-4">
-              <h3 class="font-bold text-lg mb-2 font-noto-serif-sc">
-                {{ category.name }}
-              </h3>
-              </div>
-          </a>
-        </div>
-        <div
-          v-if="featuredCategories.length === 0"
-          class="col-span-full text-center text-gray-500"
-        >
-          暂无优选分类。
-        </div>
-      </div>
-    </section>
-    -->
 
     <!-- Tab 栏目切换卡片列表区域 -->
     <section class="tabs-section">
-      <h2
-        class="text-3xl font-bold text-gray-800 mb-6 text-center font-noto-serif-sc"
-      >
-        精选茗茶
-      </h2>
       <div
         class="flex flex-nowrap mb-6 border-b border-gray-200 overflow-x-auto"
       >

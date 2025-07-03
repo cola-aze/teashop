@@ -1,8 +1,5 @@
 <template>
     <section class="four-grid-section mb-10">
-        <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center font-noto-serif-sc">
-            优选分类
-        </h2>
         <div class="grid grid-cols-2 rounded-lg shadow-lg">
             <!-- 遍历 featuredCategories -->
             <div
