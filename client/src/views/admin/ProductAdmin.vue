@@ -1,445 +1,426 @@
 <template>
-    <div>
-        <h2
-            class="text-2xl font-bold mb-6 text-gray-800 font-noto-serif-sc p-4"
-        >
-            茶品管理
-        </h2>
+  <div>
+      <h2
+          class="text-2xl font-bold mb-6 text-gray-800 font-noto-serif-sc p-4"
+      >
+          茶品管理
+      </h2>
 
-        <!-- 成功/错误消息提示 -->
-        <div
-            v-if="successMessage"
-            class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4 mx-4"
-            role="alert"
-        >
-            <span class="block sm:inline">{{ successMessage }}</span>
-            <span
-                @click="successMessage = null"
-                class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer"
-                >×</span
-            >
-        </div>
-        <div
-            v-if="error"
-            class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 mx-4"
-            role="alert"
-        >
-            <span class="block sm:inline">{{ error }}</span>
-            <span
-                @click="error = null"
-                class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer"
-                >×</span
-            >
-        </div>
+      <!-- 成功/错误消息提示 -->
+      <el-alert
+          v-if="successMessage"
+          :title="successMessage"
+          type="success"
+          show-icon
+          closable
+          @close="successMessage = null"
+          class="mb-4 mx-4"
+      >
+      </el-alert>
+      <el-alert
+          v-if="error"
+          :title="error"
+          type="error"
+          show-icon
+          closable
+          @close="error = null"
+          class="mb-4 mx-4"
+      >
+      </el-alert>
 
-        <!-- 新增/编辑茶品表单 -->
-        <form
-            @submit.prevent="isEditing ? updateItem() : addItem()"
-            class="mb-8 p-4 border border-gray-200 rounded-lg bg-white shadow-md"
-        >
-            <h3 class="text-xl font-semibold mb-4 text-gray-700">
-                {{ isEditing ? "编辑茶品" : "新增茶品" }}
-            </h3>
-            <!-- 类别字段 (已移到顶部) -->
-            <div class="mb-4">
-                <label
-                    for="category"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >类别:</label
-                >
-                <select
-                    id="category"
-                    v-model="currentItem.category"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    required
-                >
-                    <option value="" disabled>请选择类别</option>
-                    <option
-                        v-for="category in teaCategories"
-                        :key="category._id"
-                        :value="category.value"
-                    >
-                        {{ category.description }}
-                    </option>
-                </select>
-            </div>
-            <!-- 等级字段 (已移到顶部) -->
-            <div class="mb-4">
-                <label
-                    for="level"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >等级:</label
-                >
-                <select
-                    id="level"
-                    v-model="currentItem.level"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    required
-                >
-                    <option value="" disabled>请选择等级</option>
-                    <option
-                        v-for="level in productLevels"
-                        :key="level._id"
-                        :value="level.value"
-                    >
-                        {{ level.description }}
-                    </option>
-                </select>
-            </div>
-            <div class="mb-4">
-                <label
-                    for="name"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >茶品名称:</label
-                >
-                <input
-                    type="text"
-                    id="name"
-                    v-model="currentItem.name"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    placeholder="请输入茶品名称"
-                    required
-                />
-            </div>
-            <div class="mb-4">
-                <label
-                    for="description"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >描述:</label
-                >
-                <textarea
-                    id="description"
-                    v-model="currentItem.description"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500 h-24"
-                    placeholder="请输入茶品描述"
-                ></textarea>
-            </div>
-            <div class="mb-4">
-                <label
-                    for="price"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >价格:</label
-                >
-                <input
-                    type="number"
-                    id="price"
-                    v-model.number="currentItem.price"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    placeholder="请输入价格"
-                    required
-                />
-            </div>
-            <div class="mb-4">
-                <label
-                    for="imageUrl"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >图片URL:</label
-                >
-                <input
-                    type="text"
-                    id="imageUrl"
-                    v-model="currentItem.imageUrl"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    placeholder="请输入图片URL"
-                    required
-                />
-            </div>
-            <div class="mb-4">
-                <label
-                    for="stock"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >库存:</label
-                >
-                <input
-                    type="number"
-                    id="stock"
-                    v-model.number="currentItem.stock"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    placeholder="请输入库存数量"
-                    required
-                />
-            </div>
-            <div class="mb-4">
-                <label
-                    for="order"
-                    class="block text-gray-700 text-sm font-bold mb-2"
-                    >排序 (越小越靠前):</label
-                >
-                <input
-                    type="number"
-                    id="order"
-                    v-model.number="currentItem.order"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-stone-500"
-                    placeholder="请输入排序值"
-                />
-            </div>
-            <div class="flex items-center justify-between">
-                <button
-                    type="submit"
-                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
-                >
-                    {{ isEditing ? "更新" : "新增" }}
-                </button>
-                <button
-                    type="button"
-                    @click="cancelEdit"
-                    v-if="isEditing"
-                    class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300"
-                >
-                    取消
-                </button>
-            </div>
-        </form>
+      <!-- 新增茶品按钮 -->
+      <div class="p-4">
+          <el-button type="primary" @click="openAddModal">新增茶品</el-button>
+      </div>
 
-        <!-- 茶品列表 -->
-        <div class="overflow-x-auto p-4 bg-white rounded-lg shadow-md">
-            <table
-                class="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm"
-            >
-                <thead>
-                    <tr
-                        class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal"
-                    >
-                        <th class="py-3 px-6 text-left">图片</th>
-                        <th class="py-3 px-6 text-left">名称</th>
-                        <th class="py-3 px-6 text-left">类别</th>
-                        <th class="py-3 px-6 text-left">价格</th>
-                        <th class="py-3 px-6 text-left">库存</th>
-                        <th class="py-3 px-6 text-left">排序</th>
-                        <th class="py-3 px-6 text-left">等级</th>
-                        <th class="py-3 px-6 text-center">操作</th>
-                    </tr>
-                </thead>
-                <tbody class="text-gray-600 text-sm font-light">
-                    <tr v-if="products.length === 0">
-                        <td colspan="8" class="py-3 px-6 text-center">
-                            暂无茶品。
-                        </td>
-                    </tr>
-                    <tr
-                        v-for="product in products"
-                        :key="product._id"
-                        class="border-b border-gray-200 hover:bg-gray-50"
-                    >
-                        <td class="py-3 px-6 text-left">
-                            <img
-                                :src="getImageSrc(product.imageUrl)"
-                                alt="Product Image"
-                                class="w-16 h-16 object-cover rounded-md"
-                            />
-                        </td>
-                        <td class="py-3 px-6 text-left">{{ product.name }}</td>
-                        <td class="py-3 px-6 text-left">
-                            {{ product.category }}
-                        </td>
-                        <td class="py-3 px-6 text-left">
-                            ¥{{ product.price.toFixed(2) }}
-                        </td>
-                        <td class="py-3 px-6 text-left">{{ product.stock }}</td>
-                        <td class="py-3 px-6 text-left">{{ product.order }}</td>
-                        <td class="py-3 px-6 text-left">{{ product.level }}</td>
-                        <td class="py-3 px-6 text-center">
-                            <button
-                                @click="editItem(product)"
-                                class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-xs mr-2 transition duration-300"
-                            >
-                                编辑
-                            </button>
-                            <button
-                                @click="deleteItem(product._id)"
-                                class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-xs transition duration-300"
-                            >
-                                删除
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+      <!-- 新增/编辑茶品弹窗 -->
+      <el-dialog
+          :title="isEditing ? '编辑茶品' : '新增茶品'"
+          :visible.sync="dialogFormVisible"
+          @close="resetForm"
+      >
+          <el-form
+              :model="currentItem"
+              ref="productForm"
+              label-width="120px"
+          >
+              <el-form-item label="类别:" prop="category">
+                  <el-select v-model="currentItem.category" placeholder="请选择类别">
+                      <el-option
+                          v-for="category in teaCategories"
+                          :key="category._id"
+                          :label="category.description"
+                          :value="category.value"
+                      ></el-option>
+                  </el-select>
+              </el-form-item>
+
+              <el-form-item label="等级:" prop="level">
+                  <el-select v-model="currentItem.level" placeholder="请选择等级">
+                      <el-option
+                          v-for="level in productLevels"
+                          :key="level._id"
+                          :label="level.description"
+                          :value="level.value"
+                      ></el-option>
+                  </el-select>
+              </el-form-item>
+
+              <el-form-item label="茶品名称:" prop="name">
+                  <el-input
+                      v-model="currentItem.name"
+                      placeholder="请输入茶品名称"
+                  ></el-input>
+              </el-form-item>
+
+              <el-form-item label="描述:" prop="description">
+                  <el-input
+                      type="textarea"
+                      v-model="currentItem.description"
+                      placeholder="请输入茶品描述"
+                  ></el-input>
+              </el-form-item>
+
+              <el-form-item label="价格:" prop="price">
+                  <el-input-number
+                      v-model="currentItem.price"
+                      :min="0"
+                      :precision="2"
+                      :step="0.01"
+                      label="价格"
+                  ></el-input-number>
+              </el-form-item>
+
+              <el-form-item label="图片:" prop="imageUrl">
+                  <el-upload
+                      action="#"
+                      list-type="picture-card"
+                      :auto-upload="false"
+                      :on-change="handleUploadChange"
+                      :on-remove="handleUploadRemove"
+                      :on-preview="handlePictureCardPreview"
+                      :file-list="fileList"
+                      :limit="1"
+                      ref="uploadRef"
+                  >
+                      <i class="el-icon-plus"></i>
+                  </el-upload>
+                  <el-dialog :visible.sync="dialogVisible">
+                      <img width="100%" :src="dialogImageUrl" alt="">
+                  </el-dialog>
+              </el-form-item>
+
+              <el-form-item label="库存:" prop="stock">
+                  <el-input-number
+                      v-model="currentItem.stock"
+                      :min="0"
+                      label="库存数量"
+                  ></el-input-number>
+              </el-form-item>
+
+              <el-form-item label="排序 (越小越靠前):" prop="order">
+                  <el-input-number
+                      v-model="currentItem.order"
+                      :min="0"
+                      label="排序值"
+                  ></el-input-number>
+              </el-form-item>
+          </el-form>
+          <div slot="footer" class="dialog-footer">
+              <el-button @click="cancelEdit">取 消</el-button>
+              <el-button type="primary" @click="isEditing ? updateItem() : addItem()">确 定</el-button>
+          </div>
+      </el-dialog>
+
+      <!-- 茶品列表 -->
+      <div class="overflow-x-auto p-4 bg-white rounded-lg shadow-md">
+          <el-table :data="products" style="width: 100%">
+              <el-table-column label="图片">
+                  <template slot-scope="scope">
+                      <img
+                          :src="getImageSrc(scope.row.imageUrl)"
+                          alt="Product Image"
+                          class="w-16 h-16 object-cover rounded-md"
+                      />
+                  </template>
+              </el-table-column>
+              <el-table-column prop="name" label="名称"></el-table-column>
+              <el-table-column label="类别">
+                  <template slot-scope="scope">
+                      {{ getCategoryDescription(scope.row.category) }}
+                  </template>
+              </el-table-column>
+              <el-table-column prop="price" label="价格">
+                  <template slot-scope="scope">
+                      ¥{{ scope.row.price.toFixed(2) }}
+                  </template>
+              </el-table-column>
+              <el-table-column prop="stock" label="库存"></el-table-column>
+              <el-table-column prop=\"order\" label=\"排序\"></el-table-column>
+              <el-table-column label="等级">
+                  <template slot-scope="scope">
+                      {{ getLevelDescription(scope.row.level) }}
+                  </template>
+              </el-table-column>
+              <el-table-column label="操作">
+                  <template slot-scope="scope">
+                      <el-button size="mini" @click="editItem(scope.row)">编辑</el-button>
+                      <el-button size="mini" type="danger" @click="deleteItem(scope.row._id)">删除</el-button>
+                  </template>
+              </el-table-column>
+          </el-table>
+          <el-pagination
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+              :current-page="currentPage"
+              :page-sizes="[5, 10, 20, 50]"
+              :page-size="pageSize"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="totalItems"
+              class="mt-4 text-right"
+          >
+          </el-pagination>
+      </div>
+  </div>
 </template>
 
 <script>
-import { getProducts, addProduct, updateProduct, deleteProduct, getDictionaryItems } from '@/api/admin';
+import { getProducts, addProduct, updateProduct, deleteProduct } from '@/api/admin';
+import { mapGetters } from 'vuex'; // 导入 mapGetters
 
 export default {
-    name: "ProductAdmin",
-    data() {
-        return {
-            products: [],
-            currentItem: {
-                _id: null,
-                name: "",
-                description: "",
-                price: 0,
-                imageUrl: "",
-                stock: 0,
-                category: "",
-                order: 0,
-                level: "",
-            },
-            isEditing: false,
-            error: null,
-            successMessage: null,
-            teaCategories: [],
-            productLevels: [],
-        };
-    },
-    mounted() {
-        this.fetchProducts();
-        this.fetchTeaCategories();
-        this.fetchProductLevels();
-    },
-    methods: {
-        getImageSrc(imageUrl) {
-            if (!imageUrl) return "";
-            if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-                return imageUrl;
-            }
-            return `http://localhost:5000${imageUrl}`;
-        },
-        async fetchProducts() {
-            try {
-                const response = await getProducts();
-                this.products = response.data.sort((a, b) => {
-                    const categoryComparison = a.category.localeCompare(b.category);
-                    if (categoryComparison !== 0) return categoryComparison;
-                    return a.order - b.order;
-                });
-                this.successMessage = response.message;
-            } catch (err) {
-                console.error("获取茶品失败:", err.message);
-                this.error = err.message || "获取茶品失败，请稍后再试。";
-            }
-        },
-        async fetchTeaCategories() {
-            try {
-                const response = await getDictionaryItems({ type: 'tea_category' });
-                this.teaCategories = response.data.sort((a, b) => a.order - b.order || a.value.localeCompare(b.value));
-                this.successMessage = response.message;
-            } catch (err) {
-                console.error("获取茶类别失败:", err.message);
-                this.error = err.message || "获取茶类别失败，请稍后再试。";
-                this.teaCategories = [];
-            }
-        },
-        async fetchProductLevels() {
-            try {
-                const response = await getDictionaryItems({ type: 'product_level' });
-                this.productLevels = response.data.sort((a, b) => a.order - b.order || a.value.localeCompare(b.value));
-                this.successMessage = response.message;
-            } catch (err) {
-                console.error("获取产品等级失败:", err.message);
-                this.error = err.message || "获取产品等级失败，请稍后再试。";
-                this.productLevels = [];
-            }
-        },
-        async addItem() {
-            this.error = null;
-            this.successMessage = null;
-            try {
-                const formData = new FormData();
-                formData.append('name', this.currentItem.name);
-                formData.append('description', this.currentItem.description);
-                formData.append('price', this.currentItem.price);
-                formData.append('stock', this.currentItem.stock);
-                formData.append('category', this.currentItem.category);
-                formData.append('order', this.currentItem.order);
-                formData.append('level', this.currentItem.level);
-                formData.append('imageUrl', this.currentItem.imageUrl);
+  name: "ProductAdmin",
+  data() {
+      return {
+          products: [],
+          currentItem: {
+              _id: null,
+              name: "",
+              category: "",
+              price: 0,
+              stock: 0,
+              description: "",
+              imageUrl: "",
+              order: 0,
+              level: "",
+          },
+          isEditing: false,
+          successMessage: null,
+          error: null,
+          imagePreviewUrl: null,
+          selectedFile: null,
+          dialogImageUrl: '',
+          dialogVisible: false,
+          dialogFormVisible: false, // 控制新增/编辑弹窗的显示
+          fileList: [], // For ElUpload
+          currentPage: 1,
+          pageSize: 10,
+          totalItems: 0,
+      };
+  },
+  // 添加 computed 属性来映射 Vuex 中的字典数据
+  computed: {
+      ...mapGetters('dictionary', ['allTeaCategories', 'allProductLevels']),
+      // 将 getters 映射到组件的本地属性，方便模板使用
+      teaCategories() {
+          return this.allTeaCategories;
+      },
+      productLevels() {
+          return this.allProductLevels;
+      },
+  },
+  created() {
+      this.fetchProducts();
+      // 在组件创建时分发 Vuex action 来获取字典数据
+      this.$store.dispatch('dictionary/fetchTeaCategories');
+      this.$store.dispatch('dictionary/fetchProductLevels');
+  },
+  methods: {
+      async fetchProducts() {
+          try {
+              const response = await getProducts({
+                  page: this.currentPage,
+                  limit: this.pageSize,
+              });
+              this.products = response.data.products;
+              this.totalItems = response.data.totalProducts;
+          } catch (err) {
+              this.error = "获取茶品失败：" + (err.response?.data?.message || err.message);
+          }
+      },
+      handleUploadChange(file, fileList) {
+          this.fileList = fileList.slice(-1);
+          if (this.fileList.length > 0) {
+              this.selectedFile = this.fileList[0].raw;
+              this.imagePreviewUrl = this.fileList[0].url;
+          } else {
+              this.selectedFile = null;
+              this.imagePreviewUrl = null;
+          }
+      },
+      handlePictureCardPreview(file) {
+          this.dialogImageUrl = file.url;
+          this.dialogVisible = true;
+      },
+      handleUploadRemove(file, fileList) {
+          this.fileList = [];
+          this.selectedFile = null;
+          this.imagePreviewUrl = null;
+          this.currentItem.imageUrl = null;
+          this.dialogImageUrl = '';
+          this.dialogVisible = false;
+      },
+      openAddModal() {
+          this.isEditing = false;
+          this.resetForm();
+          this.dialogFormVisible = true;
+      },
+      async addItem() {
+          try {
+              const formData = new FormData();
+              formData.append('name', this.currentItem.name);
+              formData.append('category', this.currentItem.category);
+              formData.append('price', this.currentItem.price);
+              formData.append('stock', this.currentItem.stock);
+              formData.append('description', this.currentItem.description);
+              formData.append('order', this.currentItem.order);
+              formData.append('level', this.currentItem.level);
 
-                const response = await addProduct(formData);
-                this.products.push(response.data);
-                this.products.sort((a, b) => {
-                    const categoryComparison = a.category.localeCompare(b.category);
-                    if (categoryComparison !== 0) return categoryComparison;
-                    return a.order - b.order;
-                });
-                this.resetForm();
-                this.successMessage = response.message;
-            } catch (err) {
-                console.error("新增茶品失败:", err.message);
-                this.error = err.message || "新增茶品失败，请稍后再试。";
-            }
-        },
-        editItem(product) {
-            this.isEditing = true;
-            this.currentItem = { ...product };
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        },
-        async updateItem() {
-            this.error = null;
-            this.successMessage = null;
-            try {
-                const formData = new FormData();
-                formData.append('name', this.currentItem.name);
-                formData.append('description', this.currentItem.description);
-                formData.append('price', this.currentItem.price);
-                formData.append('stock', this.currentItem.stock);
-                formData.append('category', this.currentItem.category);
-                formData.append('order', this.currentItem.order);
-                formData.append('level', this.currentItem.level);
-                formData.append('imageUrl', this.currentItem.imageUrl);
+              if (this.selectedFile) {
+                  formData.append('image', this.selectedFile);
+              } else if (this.currentItem.imageUrl) {
+                  formData.append('imageUrl', this.currentItem.imageUrl);
+              } else {
+                  this.error = "请上传图片！";
+                  return;
+              }
 
-                const response = await updateProduct(this.currentItem._id, formData);
-                const index = this.products.findIndex(
-                    (product) => product._id === response.data._id
-                );
-                if (index !== -1) {
-                    this.$set(this.products, index, response.data);
-                }
-                this.products.sort((a, b) => {
-                    const categoryComparison = a.category.localeCompare(b.category);
-                    if (categoryComparison !== 0) return categoryComparison;
-                    return a.order - b.order;
-                });
-                this.resetForm();
-                this.successMessage = response.message;
-            } catch (err) {
-                console.error("更新茶品失败:", err.message);
-                this.error = err.message || "更新茶品失败，请稍后再试。";
-            }
-        },
-        async deleteItem(id) {
-            if (confirm("确定要删除此茶品吗？")) {
-                this.error = null;
-                this.successMessage = null;
-                try {
-                    const response = await deleteProduct(id);
-                    this.products = this.products.filter(
-                        (product) => product._id !== id
-                    );
-                    this.successMessage = response.message;
-                } catch (err) {
-                    console.error("删除茶品失败:", err.message);
-                    this.error = err.message || "删除茶品失败，请稍后再试。";
-                }
-            }
-        },
-        cancelEdit() {
-            this.resetForm();
-            this.isEditing = false;
-        },
-        resetForm() {
-            this.currentItem = {
-                _id: null,
-                name: "",
-                description: "",
-                price: 0,
-                imageUrl: "",
-                stock: 0,
-                category: "",
-                order: 0,
-                level: "",
-            };
-            this.isEditing = false;
-            this.error = null;
-            this.successMessage = null;
-        },
-    },
+              const response = await addProduct(formData);
+              this.successMessage = response.message;
+              this.fetchProducts();
+              this.dialogFormVisible = false;
+              this.resetForm();
+          } catch (err) {
+              this.error = "新增茶品失败：" + (err.response?.data?.message || err.message);
+          }
+      },
+      async updateItem() {
+          try {
+              const formData = new FormData();
+              formData.append('name', this.currentItem.name);
+              formData.append('category', this.currentItem.category);
+              formData.append('price', this.currentItem.price);
+              formData.append('stock', this.currentItem.stock);
+              formData.append('description', this.currentItem.description);
+              formData.append('order', this.currentItem.order);
+              formData.append('level', this.currentItem.level);
+
+              if (this.selectedFile) {
+                  formData.append('image', this.selectedFile);
+              } else if (this.currentItem.imageUrl) {
+                  formData.append('imageUrl', this.currentItem.imageUrl);
+              } else if (!this.currentItem.imageUrl) {
+                  formData.append('removeImage', 'true');
+              }
+
+              const response = await updateProduct(this.currentItem._id, formData);
+              this.successMessage = response.message;
+              this.fetchProducts();
+              this.dialogFormVisible = false;
+              this.resetForm();
+          } catch (err) {
+              this.error = "更新茶品失败：" + (err.response?.data?.message || err.message);
+          }
+      },
+      editItem(item) {
+          this.isEditing = true;
+          this.currentItem = { ...item };
+          this.imagePreviewUrl = this.getImageSrc(item.imageUrl);
+          this.selectedFile = null;
+          this.fileList = item.imageUrl ? [{ name: item.name, url: this.getImageSrc(item.imageUrl) }] : [];
+          this.dialogImageUrl = this.getImageSrc(item.imageUrl); 
+          this.dialogFormVisible = true;
+      },
+      async deleteItem(id) {
+          if (confirm('确定删除此茶品吗？')) {
+              try {
+                  const response = await deleteProduct(id);
+                  this.successMessage = response.message;
+                  this.fetchProducts();
+              } catch (err) {
+                  this.error = "删除茶品失败：" + (err.response?.data?.message || err.message);
+              }
+          }
+      },
+      cancelEdit() {
+          this.dialogFormVisible = false;
+          this.resetForm();
+      },
+      resetForm() {
+          this.isEditing = false;
+          this.currentItem = {
+              _id: null,
+              name: "",
+              category: "",
+              price: 0,
+              stock: 0,
+              description: "",
+              imageUrl: "",
+              order: 0,
+              level: "",
+          };
+          this.imagePreviewUrl = null;
+          this.selectedFile = null;
+          this.successMessage = null;
+          this.error = null;
+          this.fileList = [];
+          this.$nextTick(() => {
+              // 检查 productForm 是否存在，避免在组件销毁时调用错误
+              if (this.$refs.productForm) {
+                  this.$refs.productForm.resetFields();
+              }
+              if (this.$refs.uploadRef) {
+                  this.$refs.uploadRef.clearFiles();
+              }
+          });
+      },
+      getImageSrc(relativePath) {
+          if (!relativePath) {
+              return '';
+          }
+          if (relativePath.startsWith('http') || relativePath.startsWith('blob:')) {
+              return relativePath;
+          }
+          return `http://localhost:5000${relativePath}`;
+      },
+      handleSizeChange(val) {
+          this.pageSize = val;
+          this.fetchProducts();
+      },
+      handleCurrentChange(val) {
+          this.currentPage = val;
+          this.fetchProducts();
+      },
+      getCategoryDescription(value) {
+          const category = this.teaCategories.find(cat => cat.value === value);
+          return category ? category.description : value;
+      },
+      getLevelDescription(value) {
+          const level = this.productLevels.find(lvl => lvl.value === value);
+          return level ? level.description : value;
+      },
+  },
 };
 </script>
 
 <style scoped>
-/* 可以添加 ProductAdmin 组件特有的样式 */
+.el-upload-list__item {
+  width: 148px;
+  height: 148px;
+}
+
+.el-upload--picture-card i {
+  font-size: 28px;
+  color: #8c939d;
+}
 </style>

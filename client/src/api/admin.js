@@ -95,13 +95,13 @@ export function deleteCarouselItem(id) {
  * @description 获取所有海报图列表 (管理员权限)
  * @returns {Promise} - 返回一个 Promise 对象，包含海报图列表数据
  */
-export function getPosterItems() {
+export function getPosterItems(params) {
     return service({
         url: '/admin/posters',
-        method: 'get'
+        method: 'get',
+        params
     });
 }
-
 /**
  * @description 新增海报图 (管理员权限)
  * @param {FormData} data - 海报图数据，包含 title, linkUrl, order, 和 image 文件
@@ -161,10 +161,11 @@ export function deletePosterItem(id) {
  * @description 获取所有茶品列表 (管理员权限)
  * @returns {Promise} - 返回一个 Promise 对象，包含茶品列表数据
  */
-export function getProducts() {
+export function getProducts(params) {
     return service({
         url: '/admin/products',
-        method: 'get'
+        method: 'get',
+        params
     });
 }
 

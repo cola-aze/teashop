@@ -28,79 +28,72 @@
         >
         </el-alert>
 
-        <!-- 新增轮播图按钮 -->
-        <div class="p-4">
-            <el-button type="primary" @click="openAddModal">新增轮播图</el-button>
-        </div>
-
-        <!-- 新增/编辑轮播图弹窗 -->
-        <el-dialog
-            :title="isEditing ? '编辑轮播图' : '新增轮播图'"
-            :visible.sync="dialogFormVisible"
-            @close="resetForm"
+        <!-- 新增/编辑轮播图表单 -->
+        <el-form
+            :model="currentItem"
+            ref="carouselForm"
+            label-width="120px"
+            class="mb-8 p-4 border border-gray-200 rounded-lg bg-white shadow-md"
+            @submit.native.prevent="isEditing ? updateItem() : addItem()"
         >
-            <el-form
-                :model="currentItem"
-                ref="carouselForm"
-                label-width="120px"
-            >
-                <el-form-item label="图片:" prop="imageUrl">
-                    <el-upload
-                        action="#"
-                        list-type="picture-card"
-                        :auto-upload="false"
-                        :on-change="handleUploadChange"
-                        :on-remove="handleUploadRemove"
-                        :on-preview="handlePictureCardPreview"
-                        :file-list="fileList"
-                        :limit="1"
-                        ref="uploadRef"
-                    >
-                        <i class="el-icon-plus"></i>
-                    </el-upload>
-                    <el-dialog :visible.sync="dialogVisible">
-                        <img width="100%" :src="dialogImageUrl" alt="">
-                    </el-dialog>
-                </el-form-item>
+            <h3 class="text-xl font-semibold mb-4 text-gray-700">
+                {{ isEditing ? "编辑轮播图" : "新增轮播图" }}
+            </h3>
+            <el-form-item label="图片:" prop="imageUrl">
+                <el-upload
+                    action="#"
+                    list-type="picture-card"
+                    :auto-upload="false"
+                    :on-change="handleUploadChange"
+                    :on-remove="handleUploadRemove"
+                    :file-list="fileList"
+                    :limit="1"
+                >
+                    <i class="el-icon-plus"></i>
+                </el-upload>
+                <el-dialog :visible.sync="dialogVisible">
+                    <img width="100%" :src="dialogImageUrl" alt="">
+                </el-dialog>
+            </el-form-item>
 
-                <el-form-item label="标题:" prop="title">
-                    <el-input
-                        v-model="currentItem.title"
-                        placeholder="请输入轮播图标题"
-                    ></el-input>
-                </el-form-item>
+            <el-form-item label="标题:" prop="title">
+                <el-input
+                    v-model="currentItem.title"
+                    placeholder="请输入轮播图标题"
+                ></el-input>
+            </el-form-item>
 
-                <el-form-item label="链接URL (可选):" prop="linkUrl">
-                    <el-input
-                        v-model="currentItem.linkUrl"
-                        :placeholder="
-                            linkType === 'internal'
-                                ? '例如: /products/some-product-id'
-                                : '例如: https://www.example.com'
-                        "
-                    ></el-input>
-                </el-form-item>
+            <el-form-item label="链接URL (可选):" prop="linkUrl">
+                <el-input
+                    v-model="currentItem.linkUrl"
+                    :placeholder="
+                        linkType === 'internal'
+                            ? '例如: /products/some-product-id'
+                            : '例如: https://www.example.com'
+                    "
+                ></el-input>
+            </el-form-item>
 
-                <el-form-item label="链接类型:" prop="linkType">
-                    <el-radio-group v-model="linkType">
-                        <el-radio label="internal">内部链接</el-radio>
-                        <el-radio label="external">外部链接</el-radio>
-                    </el-radio-group>
-                </el-form-item>
+            <el-form-item label="链接类型:" prop="linkType">
+                <el-radio-group v-model="linkType">
+                    <el-radio label="internal">内部链接</el-radio>
+                    <el-radio label="external">外部链接</el-radio>
+                </el-radio-group>
+            </el-form-item>
 
-                <el-form-item label="排序 (数字):" prop="order">
-                    <el-input-number
-                        v-model="currentItem.order"
-                        :min="0"
-                        label="排序数字"
-                    ></el-input-number>
-                </el-form-item>
-            </el-form>
-            <div slot="footer" class="dialog-footer">
-                <el-button @click="cancelEdit">取 消</el-button>
-                <el-button type="primary" @click="isEditing ? updateItem() : addItem()">确 定</el-button>
-            </div>
-        </el-dialog>
+            <el-form-item label="排序 (数字):" prop="order">
+                <el-input-number
+                    v-model="currentItem.order"
+                    :min="0"
+                    label="排序数字"
+                ></el-input-number>
+            </el-form-item>
+
+            <el-form-item>
+                <el-button type="primary" @click="isEditing ? updateItem() : addItem()">{{ isEditing ? "更新" : "新增" }}</el-button>
+                <el-button @click="cancelEdit" v-if="isEditing">取消</el-button>
+            </el-form-item>
+        </el-form>
 
         <!-- 轮播图列表 -->
         <div class="overflow-x-auto p-4 bg-white rounded-lg shadow-md">
@@ -133,17 +126,6 @@
                     </template>
                 </el-table-column>
             </el-table>
-            <el-pagination
-                @size-change="handleSizeChange"
-                @current-change="handleCurrentChange"
-                :current-page="currentPage"
-                :page-sizes="[5, 10, 20, 50]"
-                :page-size="pageSize"
-                layout="total, sizes, prev, pager, next, jumper"
-                :total="totalItems"
-                class="mt-4 text-right"
-            >
-            </el-pagination>
         </div>
     </div>
 </template>
@@ -171,11 +153,7 @@ export default {
             error: null,
             dialogImageUrl: '',
             dialogVisible: false,
-            dialogFormVisible: false, // 控制新增/编辑弹窗的显示
             fileList: [], // For ElUpload
-            currentPage: 1,
-            pageSize: 10,
-            totalItems: 0,
         };
     },
     created() {
@@ -184,53 +162,29 @@ export default {
     methods: {
         async fetchCarouselItems() {
             try {
-                const response = await getCarouselItems({
-                    page: this.currentPage,
-                    limit: this.pageSize,
-                });
-                this.carouselItems = response.data.items;
-                this.totalItems = response.data.totalItems;
+                const response = await getCarouselItems();
+                this.carouselItems = response.data;
             } catch (err) {
                 this.error = "获取轮播图失败：" + (err.response?.data?.message || err.message);
             }
         },
         handleUploadChange(file, fileList) {
-            console.log('handleUploadChange - file argument:', file);
-            console.log('handleUploadChange - fileList argument (after change):', fileList);
             // 确保只保留一个文件
             this.fileList = fileList.slice(-1);
-            console.log('handleUploadChange - this.fileList after slice:', this.fileList);
-
-            if (this.fileList.length > 0) {
-                this.selectedFile = this.fileList[0].raw;
-                this.imagePreviewUrl = this.fileList[0].url; // 直接使用 Element UI 提供的 url
+            if (fileList.length > 0) {
+                this.selectedFile = file.raw;
+                this.imagePreviewUrl = URL.createObjectURL(file.raw);
             } else {
                 this.selectedFile = null;
                 this.imagePreviewUrl = null;
             }
-            // handleUploadChange 发生在文件添加时，此时不应关闭预览对话框，应由 handlePictureCardPreview 打开
-            // this.dialogVisible = false; 
-        },
-        handlePictureCardPreview(file) {
-            this.dialogImageUrl = file.url;
-            this.dialogVisible = true;
+            this.dialogVisible = false; // Close dialog if file changes
         },
         handleUploadRemove(file, fileList) {
-            console.log('handleUploadRemove - file argument:', file);
-            console.log('handleUploadRemove - fileList argument (after removal):', fileList);
-            // 确保 fileList 是一个新的空数组，以触发 Vue 的响应式更新
-            this.fileList = []; 
+            this.fileList = [];
             this.selectedFile = null;
-            this.imagePreviewUrl = null; // 清除内部预览 URL
-            this.currentItem.imageUrl = null; // 清除现有图片，以便后端处理
-            this.dialogImageUrl = ''; // 清除预览对话框的图片 URL
-            this.dialogVisible = false; // 确保预览对话框关闭
-            console.log('handleUploadRemove - this.fileList after explicit clear:', this.fileList);
-        },
-        openAddModal() {
-            this.isEditing = false;
-            this.resetForm();
-            this.dialogFormVisible = true;
+            this.imagePreviewUrl = null;
+            this.currentItem.imageUrl = null; // Clear existing image when removed
         },
         async addItem() {
             try {
@@ -252,7 +206,6 @@ export default {
                 const response = await addCarouselItem(formData);
                 this.successMessage = response.message;
                 this.fetchCarouselItems();
-                this.dialogFormVisible = false; // 关闭弹窗
                 this.resetForm();
             } catch (err) {
                 this.error = "新增轮播图失败：" + (err.response?.data?.message || err.message);
@@ -279,7 +232,6 @@ export default {
                 const response = await updateCarouselItem(this.currentItem._id, formData);
                 this.successMessage = response.message;
                 this.fetchCarouselItems();
-                this.dialogFormVisible = false; // 关闭弹窗
                 this.resetForm();
             } catch (err) {
                 this.error = "更新轮播图失败：" + (err.response?.data?.message || err.message);
@@ -293,8 +245,6 @@ export default {
             this.imagePreviewUrl = this.getAbsoluteImageUrl(item.imageUrl);
             this.selectedFile = null; // Clear selected file for edit
             this.fileList = item.imageUrl ? [{ name: item.title, url: this.getAbsoluteImageUrl(item.imageUrl) }] : [];
-            this.dialogImageUrl = this.getAbsoluteImageUrl(item.imageUrl); // For ElUpload preview dialog
-            this.dialogFormVisible = true; // 打开弹窗
         },
         async deleteItem(id) {
             if (confirm('确定删除此轮播图吗？')) {
@@ -306,10 +256,6 @@ export default {
                     this.error = "删除轮播图失败：" + (err.response?.data?.message || err.message);
                 }
             }
-        },
-        cancelEdit() {
-            this.dialogFormVisible = false; // 关闭弹窗
-            this.resetForm();
         },
         resetForm() {
             this.isEditing = false;
@@ -329,10 +275,6 @@ export default {
             // Reset Element UI form validation
             this.$nextTick(() => {
                 this.$refs.carouselForm.resetFields();
-                // 显式调用 ElUpload 的 clearFiles 方法来清除内部文件列表
-                if (this.$refs.uploadRef) {
-                    this.$refs.uploadRef.clearFiles();
-                }
             });
         },
         getAbsoluteImageUrl(relativePath) {
@@ -355,14 +297,6 @@ export default {
             }
             return '#';
         },
-        handleSizeChange(val) {
-            this.pageSize = val;
-            this.fetchCarouselItems();
-        },
-        handleCurrentChange(val) {
-            this.currentPage = val;
-            this.fetchCarouselItems();
-        },
     },
 };
 </script>
@@ -378,4 +312,4 @@ export default {
     font-size: 28px;
     color: #8c939d;
 }
-</style>
+</style> 
